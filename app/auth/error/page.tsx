@@ -11,9 +11,9 @@ export default function AuthErrorPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive">
             <Scissors className="h-6 w-6 text-destructive-foreground" />
           </div>
-          <CardTitle className="text-2xl">Authentication Error</CardTitle>
+          <CardTitle className="text-2xl">Error de autenticación</CardTitle>
           <CardDescription>
-            Something went wrong during authentication
+            Algo salió mal durante la autenticación
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -21,15 +21,15 @@ export default function AuthErrorPage() {
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <p className="text-sm text-muted-foreground">
-            The authentication link may have expired or already been used. 
-            Please try signing in again or contact support if the issue persists.
+            El enlace de autenticación puede haber expirado o ya fue utilizado. 
+            Por favor intenta iniciar sesión de nuevo o contacta a soporte si el problema persiste.
           </p>
           <div className="flex flex-col gap-2">
             <Button asChild className="w-full">
-              <Link href="/auth/login">Try Again</Link>
+              <Link href="/auth/login">Intentar de nuevo</Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/auth/register">Create New Account</Link>
+              <Link href="/auth/register">Crear nueva cuenta</Link>
             </Button>
           </div>
         </CardContent>

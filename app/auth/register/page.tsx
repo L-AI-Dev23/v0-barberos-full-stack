@@ -55,8 +55,8 @@ export default function RegisterPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
             <Scissors className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Create your account</CardTitle>
-          <CardDescription>Join BarberOS to manage your barbershop</CardDescription>
+          <CardTitle className="text-2xl">Crea tu cuenta</CardTitle>
+          <CardDescription>Únete a BarberOS para gestionar tu barbería</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,11 +67,11 @@ export default function RegisterPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">Nombre completo</Label>
               <Input
                 id="fullName"
                 type="text"
-                placeholder="John Doe"
+                placeholder="Juan Pérez"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
@@ -79,11 +79,11 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="tu@correo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -91,11 +91,11 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Min 6 characters"
+                placeholder="Mínimo 6 caracteres"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -107,17 +107,17 @@ export default function RegisterPage() {
               <div className="flex items-start gap-2 p-3 bg-muted rounded-md mb-4">
                 <Info className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                 <p className="text-sm text-muted-foreground">
-                  Fill in <strong>Business Name</strong> to create a new barbershop as admin, 
-                  or use an <strong>Invitation Code</strong> to join an existing one as employee.
+                  Completa el <strong>Nombre del negocio</strong> para crear una nueva barbería como administrador, 
+                  o usa un <strong>Código de invitación</strong> para unirte a una existente como empleado.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="businessName">Business Name (optional)</Label>
+                <Label htmlFor="businessName">Nombre del negocio (opcional)</Label>
                 <Input
                   id="businessName"
                   type="text"
-                  placeholder="My Barbershop"
+                  placeholder="Mi Barbería"
                   value={businessName}
                   onChange={(e) => {
                     setBusinessName(e.target.value)
@@ -132,12 +132,12 @@ export default function RegisterPage() {
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                  <span className="bg-card px-2 text-muted-foreground">o</span>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="invitationCode">Invitation Code (optional)</Label>
+                <Label htmlFor="invitationCode">Código de invitación (opcional)</Label>
                 <Input
                   id="invitationCode"
                   type="text"
@@ -154,13 +154,13 @@ export default function RegisterPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
-              Already have an account?{' '}
+              ¿Ya tienes una cuenta?{' '}
               <Link href="/auth/login" className="text-primary hover:underline">
-                Sign in
+                Inicia sesión
               </Link>
             </p>
           </form>

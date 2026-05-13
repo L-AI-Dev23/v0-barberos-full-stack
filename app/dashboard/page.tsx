@@ -150,7 +150,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Cargando...</p>
       </div>
     )
   }
@@ -187,8 +187,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of today&apos;s performance</p>
+          <h1 className="text-2xl font-bold">Panel</h1>
+          <p className="text-muted-foreground">Resumen del rendimiento de hoy</p>
         </div>
       </div>
 
@@ -196,45 +196,45 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Daily Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Ingresos del día</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(dailyRevenue)}</div>
-            <p className="text-xs text-muted-foreground">Total sales today</p>
+            <p className="text-xs text-muted-foreground">Ventas totales hoy</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Services Today</CardTitle>
+            <CardTitle className="text-sm font-medium">Servicios hoy</CardTitle>
             <Scissors className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{servicesCount}</div>
-            <p className="text-xs text-muted-foreground">Services performed</p>
+            <p className="text-xs text-muted-foreground">Servicios realizados</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Employee Payments</CardTitle>
+            <CardTitle className="text-sm font-medium">Pagos a empleados</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalCommissions)}</div>
-            <p className="text-xs text-muted-foreground">Total commissions</p>
+            <p className="text-xs text-muted-foreground">Comisiones totales</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+            <CardTitle className="text-sm font-medium">Ganancia neta</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(netProfit)}</div>
-            <p className="text-xs text-muted-foreground">Revenue - Commissions</p>
+            <p className="text-xs text-muted-foreground">Ingresos - Comisiones</p>
           </CardContent>
         </Card>
       </div>

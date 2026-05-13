@@ -11,9 +11,9 @@ export default function VerifyEmailPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
             <Scissors className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Check your email</CardTitle>
+          <CardTitle className="text-2xl">Revisa tu correo</CardTitle>
           <CardDescription>
-            {"We've sent you a confirmation link to verify your account"}
+            {"Te hemos enviado un enlace de confirmación para verificar tu cuenta"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -21,11 +21,11 @@ export default function VerifyEmailPage() {
             <Mail className="h-8 w-8 text-muted-foreground" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Click the link in the email to activate your account. 
-            If you {"don't"} see the email, check your spam folder.
+            Haz clic en el enlace del correo para activar tu cuenta. 
+            Si no ves el correo, revisa tu carpeta de spam.
           </p>
           <Button asChild variant="outline" className="w-full">
-            <Link href="/auth/login">Back to Login</Link>
+            <Link href="/auth/login">Volver al inicio de sesión</Link>
           </Button>
         </CardContent>
       </Card>

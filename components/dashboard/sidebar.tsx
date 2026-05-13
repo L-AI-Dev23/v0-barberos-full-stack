@@ -22,17 +22,17 @@ import {
 import { useState } from 'react'
 
 const adminNavItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard' as const },
-  { href: '/dashboard/services', label: 'Services', icon: Scissors, permission: 'services' as const },
-  { href: '/dashboard/inventory', label: 'Inventory', icon: Package, permission: 'inventory' as const },
-  { href: '/dashboard/collaborators', label: 'Collaborators', icon: Users, permission: 'collaborators' as const },
+  { href: '/dashboard', label: 'Panel', icon: LayoutDashboard, permission: 'dashboard' as const },
+  { href: '/dashboard/services', label: 'Servicios', icon: Scissors, permission: 'services' as const },
+  { href: '/dashboard/inventory', label: 'Inventario', icon: Package, permission: 'inventory' as const },
+  { href: '/dashboard/collaborators', label: 'Colaboradores', icon: Users, permission: 'collaborators' as const },
   { href: '/dashboard/pos', label: 'P.O.S.', icon: ShoppingCart, permission: 'pos' as const },
-  { href: '/dashboard/loyalty', label: 'Loyalty', icon: Heart, permission: 'loyalty' as const },
-  { href: '/dashboard/configuration', label: 'Configuration', icon: Settings, permission: 'configuration' as const },
+  { href: '/dashboard/loyalty', label: 'Fidelidad', icon: Heart, permission: 'loyalty' as const },
+  { href: '/dashboard/configuration', label: 'Configuración', icon: Settings, permission: 'configuration' as const },
 ]
 
 const employeeNavItems = [
-  { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet, permission: null },
+  { href: '/dashboard/earnings', label: 'Ganancias', icon: Wallet, permission: null },
 ]
 
 export function Sidebar() {
@@ -83,7 +83,7 @@ export function Sidebar() {
           {/* Organization name */}
           {profile?.organizations && (
             <div className="px-6 py-3 border-b">
-              <p className="text-xs text-muted-foreground">Organization</p>
+              <p className="text-xs text-muted-foreground">Organización</p>
               <p className="font-medium truncate">{profile.organizations.name}</p>
             </div>
           )}
@@ -122,7 +122,7 @@ export function Sidebar() {
             <form action={signOut}>
               <Button type="submit" variant="outline" className="w-full gap-2">
                 <LogOut className="h-4 w-4" />
-                Sign Out
+                Cerrar Sesión
               </Button>
             </form>
           </div>
