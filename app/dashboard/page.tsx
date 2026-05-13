@@ -55,11 +55,8 @@ export default function DashboardPage() {
     }
   }, [profile, isAdmin, router, loading])
 
-  if (loading || !profile) {
-    return null
-  }
-
-  if (!isAdmin) {
+  // Show nothing while loading or if not an admin
+  if (loading || !isAdmin) {
     return null
   }
 
