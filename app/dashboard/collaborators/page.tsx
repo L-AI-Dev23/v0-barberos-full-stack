@@ -48,7 +48,7 @@ export default function CollaboratorsPage() {
   const [saving, setSaving] = useState(false)
 
   const { data: employees, mutate: mutateEmployees } = useSWR<Profile[]>(
-    profile?.organization_id ? 'employees' : null,
+    profile?.organization_id ? `employees-${profile.organization_id}` : null,
     async () => {
       const { data } = await supabase
         .from('profiles')
@@ -57,11 +57,12 @@ export default function CollaboratorsPage() {
         .eq('role', 'employee')
         .order('full_name')
       return data || []
-    }
+    },
+    { refreshInterval: 5000 }
   )
 
   const { data: invitationCodes, mutate: mutateInvitations } = useSWR<InvitationCode[]>(
-    profile?.organization_id && isAdmin ? 'invitation-codes' : null,
+    profile?.organization_id && isAdmin ? `invitation-codes-${profile.organization_id}` : null,
     async () => {
       const { data } = await supabase
         .from('invitation_codes')
@@ -70,7 +71,8 @@ export default function CollaboratorsPage() {
         .eq('used', false)
         .order('created_at', { ascending: false })
       return data || []
-    }
+    },
+    { refreshInterval: 5000 }
   )
 
   function togglePermission(key: keyof ModulePermissions) {
