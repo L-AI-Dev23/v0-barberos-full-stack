@@ -44,14 +44,6 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import useSWR from 'swr'
-import { createClient } from '@/lib/supabase/client'
-import { useAuth } from '@/lib/context/auth-context'
-
 export default function DashboardPage() {
   const router = useRouter()
   const { profile, isAdmin } = useAuth()
