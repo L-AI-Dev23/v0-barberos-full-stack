@@ -16,6 +16,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { UserPlus, Copy, Check, User, Calendar, Trash2, X } from 'lucide-react'
 import type { Profile, InvitationCode, ModulePermissions } from '@/lib/types/database'
 
