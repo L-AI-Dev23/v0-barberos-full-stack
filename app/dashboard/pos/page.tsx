@@ -404,7 +404,6 @@ export default function POSPage() {
                   <SelectValue placeholder="No client selected" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No client</SelectItem>
                   {clients?.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name} ({client.stamps}/5 stamps)
