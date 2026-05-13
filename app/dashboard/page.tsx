@@ -243,8 +243,8 @@ export default function DashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Revenue by Hour</CardTitle>
-            <CardDescription>Sales distribution throughout the day</CardDescription>
+            <CardTitle>Ingresos por hora</CardTitle>
+            <CardDescription>Distribución de ventas durante el día</CardDescription>
           </div>
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
             <DialogTrigger asChild>
@@ -254,11 +254,11 @@ export default function DashboardPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Operating Hours</DialogTitle>
+                <DialogTitle>Horario de operación</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Opening Time</Label>
+                  <Label>Hora de apertura</Label>
                   <Input
                     type="time"
                     value={openingTime}
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Closing Time</Label>
+                  <Label>Hora de cierre</Label>
                   <Input
                     type="time"
                     value={closingTime}
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                   />
                 </div>
                 <Button onClick={saveSettings} disabled={saving} className="w-full">
-                  {saving ? 'Saving...' : 'Save Settings'}
+                  {saving ? 'Guardando...' : 'Guardar configuración'}
                 </Button>
               </div>
             </DialogContent>
@@ -311,9 +311,9 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Recent Clients
+              Clientes recientes
             </CardTitle>
-            <CardDescription>Clients served today</CardDescription>
+            <CardDescription>Clientes atendidos hoy</CardDescription>
           </CardHeader>
           <CardContent>
             {recentClients && recentClients.length > 0 ? (
@@ -327,7 +327,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="font-medium">{client.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {client.services_count} service{client.services_count !== 1 ? 's' : ''}
+                          {client.services_count} servicio{client.services_count !== 1 ? 's' : ''}
                         </p>
                       </div>
                     </div>
@@ -340,7 +340,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-8">
-                No clients served today
+                Sin clientes hoy
               </p>
             )}
           </CardContent>
@@ -351,9 +351,9 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Low Stock Alerts
+              Alertas de stock bajo
             </CardTitle>
-            <CardDescription>Products below minimum threshold</CardDescription>
+            <CardDescription>Productos por debajo del umbral mínimo</CardDescription>
           </CardHeader>
           <CardContent>
             {lowStockProducts && lowStockProducts.length > 0 ? (
@@ -363,12 +363,12 @@ export default function DashboardPage() {
                     <div>
                       <p className="font-medium">{product.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        Min: {product.min_stock || 5} units
+                        Mín: {product.min_stock || 5} unidades
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-amber-600">
-                        {product.stock} left
+                        {product.stock} disponibles
                       </span>
                     </div>
                   </div>
@@ -376,7 +376,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-8">
-                All products are well stocked
+                Todos los productos tienen buen stock
               </p>
             )}
           </CardContent>

@@ -174,8 +174,8 @@ export default function ServicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Services</h1>
-          <p className="text-muted-foreground">Manage your barbershop services</p>
+          <h1 className="text-2xl font-bold">Servicios</h1>
+          <p className="text-muted-foreground">Gestiona los servicios de tu barbería</p>
         </div>
         {isAdmin && (
           <div className="flex gap-2">
@@ -189,24 +189,24 @@ export default function ServicesPage() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <FolderPlus className="h-4 w-4 mr-2" />
-                  Create Category
+                  Crear categoría
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingCategory ? 'Edit Category' : 'Create Category'}</DialogTitle>
+                  <DialogTitle>{editingCategory ? 'Editar categoría' : 'Crear categoría'}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Category Name</Label>
+                    <Label>Nombre de la categoría</Label>
                     <Input
-                      placeholder="e.g., Haircuts"
+                      placeholder="ej., Cortes de cabello"
                       value={categoryName}
                       onChange={(e) => setCategoryName(e.target.value)}
                     />
                   </div>
                   <Button onClick={handleSaveCategory} disabled={saving || !categoryName.trim()} className="w-full">
-                    {saving ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
+                    {saving ? 'Guardando...' : (editingCategory ? 'Actualizar' : 'Crear')}
                   </Button>
                 </div>
               </DialogContent>
@@ -219,33 +219,33 @@ export default function ServicesPage() {
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Service
+                  Crear servicio
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingService ? 'Edit Service' : 'Create Service'}</DialogTitle>
+                  <DialogTitle>{editingService ? 'Editar servicio' : 'Crear servicio'}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Name *</Label>
+                    <Label>Nombre *</Label>
                     <Input
-                      placeholder="e.g., Classic Haircut"
+                      placeholder="ej., Corte clásico"
                       value={serviceName}
                       onChange={(e) => setServiceName(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Description</Label>
+                    <Label>Descripción</Label>
                     <Textarea
-                      placeholder="Service description..."
+                      placeholder="Descripción del servicio..."
                       value={serviceDescription}
                       onChange={(e) => setServiceDescription(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>Cost (S/) *</Label>
+                      <Label>Costo (S/) *</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -255,7 +255,7 @@ export default function ServicesPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Commission (S/) *</Label>
+                      <Label>Comisión (S/) *</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -265,7 +265,7 @@ export default function ServicesPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Profit</Label>
+                      <Label>Ganancia</Label>
                       <Input
                         value={formatCurrency(profit)}
                         disabled
@@ -274,10 +274,10 @@ export default function ServicesPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Category</Label>
+                    <Label>Categoría</Label>
                     <Select value={serviceCategoryId} onValueChange={setServiceCategoryId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Selecciona categoría" />
                       </SelectTrigger>
                       <SelectContent>
                         {categories?.map((cat) => (
@@ -291,7 +291,7 @@ export default function ServicesPage() {
                     disabled={saving || !serviceName.trim() || !serviceCost || !serviceCommission} 
                     className="w-full"
                   >
-                    {saving ? 'Saving...' : (editingService ? 'Update' : 'Create')}
+                    {saving ? 'Guardando...' : (editingService ? 'Actualizar' : 'Crear')}
                   </Button>
                 </div>
               </DialogContent>
@@ -315,10 +315,10 @@ export default function ServicesPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={() => openEditCategory(cat)}>
-                      <Pencil className="h-4 w-4 mr-2" /> Edit
+                      <Pencil className="h-4 w-4 mr-2" /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleDeleteCategory(cat.id)} className="text-destructive">
-                      <Trash2 className="h-4 w-4 mr-2" /> Delete
+                      <Trash2 className="h-4 w-4 mr-2" /> Eliminar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
