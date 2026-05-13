@@ -42,7 +42,7 @@ export function Sidebar() {
 
   const navItems = isAdmin
     ? adminNavItems
-    : [...adminNavItems.filter(item => hasPermission(item.permission)), ...employeeNavItems]
+    : adminNavItems.filter(item => hasPermission(item.permission)).concat(employeeNavItems)
 
   return (
     <>

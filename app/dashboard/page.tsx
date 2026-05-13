@@ -46,14 +46,18 @@ function formatCurrency(amount: number) {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { profile, isAdmin } = useAuth()
+  const { profile, isAdmin, loading } = useAuth()
   
   // Redirect employees away from dashboard
   useEffect(() => {
-    if (profile && !isAdmin) {
+    if (!loading && profile && !isAdmin) {
       router.push('/dashboard/earnings')
     }
-  }, [profile, isAdmin, router])
+  }, [profile, isAdmin, router, loading])
+
+  if (loading || !profile) {
+    return null
+  }
 
   if (!isAdmin) {
     return null
