@@ -47,6 +47,13 @@ function formatCurrency(amount: number) {
 export default function DashboardPage() {
   const router = useRouter()
   const { profile, isAdmin, loading } = useAuth()
+  const supabase = createClient()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [openingTime, setOpeningTime] = useState('09:00')
+  const [closingTime, setClosingTime] = useState('21:00')
+  const [saving, setSaving] = useState(false)
+
+  const today = new Date().toISOString().split('T')[0]
   
   // Redirect employees away from dashboard
   useEffect(() => {
@@ -55,18 +62,19 @@ export default function DashboardPage() {
     }
   }, [profile, isAdmin, router, loading])
 
-  // Show nothing while loading or if not an admin
-  if (loading || !isAdmin) {
-    return null
+  // Show loading while auth is loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    )
   }
 
-  const supabase = createClient()
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [openingTime, setOpeningTime] = useState('09:00')
-  const [closingTime, setClosingTime] = useState('21:00')
-  const [saving, setSaving] = useState(false)
-
-  const today = new Date().toISOString().split('T')[0]
+  // If not admin, show nothing (redirect will happen via useEffect)
+  if (!isAdmin) {
+    return null
+  }
 
   // Fetch today's sales
   const { data: sales, mutate: mutateSales } = useSWR<Sale[]>(
