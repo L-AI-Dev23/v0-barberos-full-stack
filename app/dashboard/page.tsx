@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/context/auth-context'
@@ -43,8 +44,29 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import useSWR from 'swr'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/context/auth-context'
+
 export default function DashboardPage() {
-  const { profile } = useAuth()
+  const router = useRouter()
+  const { profile, isAdmin } = useAuth()
+  
+  // Redirect employees away from dashboard
+  useEffect(() => {
+    if (profile && !isAdmin) {
+      router.push('/dashboard/earnings')
+    }
+  }, [profile, isAdmin, router])
+
+  if (!isAdmin) {
+    return null
+  }
+
   const supabase = createClient()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [openingTime, setOpeningTime] = useState('09:00')
