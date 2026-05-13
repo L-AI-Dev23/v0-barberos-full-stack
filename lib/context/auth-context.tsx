@@ -48,11 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      const { data: { session } } = await supabase.auth.getSession()
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
       
-      if (user) {
-        await fetchProfile(user.id)
+      if (currentUser) {
+        await fetchProfile(currentUser.id)
       }
       
       setLoading(false)
@@ -62,12 +63,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
         
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-        } else {
+        if (event === 'SIGNED_OUT') {
           setProfile(null)
+          setLoading(false)
+        } else if (currentUser && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+          // Only refetch profile if we don't have it or user changed
+          if (!profile || profile.id !== currentUser.id) {
+            await fetchProfile(currentUser.id)
+          }
+          setLoading(false)
         }
       }
     )
