@@ -1,0 +1,218 @@
+'use client'
+
+import { useState } from 'react'
+import useSWR from 'swr'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/context/auth-context'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Wallet, Scissors, TrendingUp } from 'lucide-react'
+import type { Sale, SaleItem } from '@/lib/types/database'
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+  }).format(amount)
+}
+
+type Period = 'today' | 'week' | 'month'
+
+export default function EarningsPage() {
+  const { profile } = useAuth()
+  const supabase = createClient()
+  const [period, setPeriod] = useState<Period>('today')
+
+  function getDateRange(p: Period) {
+    const now = new Date()
+    const start = new Date()
+    
+    switch (p) {
+      case 'today':
+        start.setHours(0, 0, 0, 0)
+        break
+      case 'week':
+        start.setDate(now.getDate() - 7)
+        break
+      case 'month':
+        start.setMonth(now.getMonth() - 1)
+        break
+    }
+    
+    return { start: start.toISOString(), end: now.toISOString() }
+  }
+
+  const { data: sales } = useSWR<(Sale & { items: SaleItem[] })[]>(
+    profile?.id ? `earnings-${period}` : null,
+    async () => {
+      const range = getDateRange(period)
+      const { data } = await supabase
+        .from('sales')
+        .select('*, items:sale_items(*, service:services(*), product:products(*))')
+        .eq('employee_id', profile!.id)
+        .gte('created_at', range.start)
+        .lte('created_at', range.end)
+        .order('created_at', { ascending: false })
+      return data || []
+    },
+    { revalidateOnFocus: true }
+  )
+
+  const totalEarnings = sales?.reduce((sum, sale) => sum + Number(sale.total_commission), 0) || 0
+  const totalServices = sales?.reduce((sum, sale) => {
+    const serviceItems = sale.items?.filter(i => i.item_type === 'service') || []
+    return sum + serviceItems.reduce((s, i) => s + i.quantity, 0)
+  }, 0) || 0
+
+  // Group sales by service for breakdown
+  const serviceBreakdown = sales?.reduce((acc, sale) => {
+    sale.items?.forEach(item => {
+      if (item.item_type === 'service' && item.service) {
+        const key = item.service.name
+        if (!acc[key]) {
+          acc[key] = { count: 0, commission: 0 }
+        }
+        acc[key].count += item.quantity
+        acc[key].commission += Number(item.commission) * item.quantity
+      }
+    })
+    return acc
+  }, {} as Record<string, { count: number; commission: number }>) || {}
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Earnings</h1>
+          <p className="text-muted-foreground">Track your commissions and performance</p>
+        </div>
+      </div>
+
+      {/* Period Selector */}
+      <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+        <TabsList>
+          <TabsTrigger value="today">Today</TabsTrigger>
+          <TabsTrigger value="week">This Week</TabsTrigger>
+          <TabsTrigger value="month">This Month</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{formatCurrency(totalEarnings)}</div>
+            <p className="text-xs text-muted-foreground">
+              {period === 'today' ? 'Today' : period === 'week' ? 'Last 7 days' : 'Last 30 days'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Services Performed</CardTitle>
+            <Scissors className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalServices}</div>
+            <p className="text-xs text-muted-foreground">
+              {period === 'today' ? 'Today' : period === 'week' ? 'Last 7 days' : 'Last 30 days'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Service Breakdown */}
+      {Object.keys(serviceBreakdown).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Earnings Breakdown
+            </CardTitle>
+            <CardDescription>Commission by service type</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(serviceBreakdown)
+                .sort(([, a], [, b]) => b.commission - a.commission)
+                .map(([name, data]) => (
+                  <div key={name} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{name}</p>
+                      <p className="text-sm text-muted-foreground">{data.count} performed</p>
+                    </div>
+                    <p className="font-semibold">{formatCurrency(data.commission)}</p>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Detailed History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Service History</CardTitle>
+          <CardDescription>Detailed list of your services</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[400px]">
+            {sales && sales.length > 0 ? (
+              <div className="space-y-4 pr-4">
+                {sales.map((sale) => (
+                  <div key={sale.id} className="border-b pb-4 last:border-0">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-medium">
+                          {new Date(sale.created_at).toLocaleDateString('es-PE', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(sale.created_at).toLocaleTimeString('es-PE', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-green-600">
+                          +{formatCurrency(sale.total_commission)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Sale: {formatCurrency(sale.total)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      {sale.items?.filter(i => i.item_type === 'service').map((item) => (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            {item.quantity}x {item.service?.name}
+                          </span>
+                          <span>{formatCurrency(Number(item.commission) * item.quantity)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                No services recorded for this period.
+              </p>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
