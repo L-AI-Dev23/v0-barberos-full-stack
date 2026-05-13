@@ -348,10 +348,10 @@ export default function ServicesPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={() => openEditService(service)}>
-                      <Pencil className="h-4 w-4 mr-2" /> Edit
+                      <Pencil className="h-4 w-4 mr-2" /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleDeleteService(service.id)} className="text-destructive">
-                      <Trash2 className="h-4 w-4 mr-2" /> Delete
+                      <Trash2 className="h-4 w-4 mr-2" /> Eliminar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -363,15 +363,15 @@ export default function ServicesPage() {
               )}
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Cost</p>
+                  <p className="text-muted-foreground">Costo</p>
                   <p className="font-medium">{formatCurrency(service.cost)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Commission</p>
+                  <p className="text-muted-foreground">Comisión</p>
                   <p className="font-medium">{formatCurrency(service.commission)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Profit</p>
+                  <p className="text-muted-foreground">Ganancia</p>
                   <p className="font-medium text-green-600">{formatCurrency(service.cost - service.commission)}</p>
                 </div>
               </div>
@@ -382,7 +382,7 @@ export default function ServicesPage() {
 
       {(!services || services.length === 0) && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No services yet. {isAdmin && 'Create your first service to get started.'}</p>
+          <p>Sin servicios aún. {isAdmin && 'Crea tu primer servicio para comenzar.'}</p>
         </div>
       )}
     </div>

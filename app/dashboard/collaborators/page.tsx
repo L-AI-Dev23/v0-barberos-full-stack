@@ -26,13 +26,13 @@ import { UserPlus, Copy, Check, User, Calendar, Trash2, X } from 'lucide-react'
 import type { Profile, InvitationCode, ModulePermissions } from '@/lib/types/database'
 
 const MODULES = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'services', label: 'Services' },
-  { key: 'inventory', label: 'Inventory' },
-  { key: 'collaborators', label: 'Collaborators' },
+  { key: 'dashboard', label: 'Panel' },
+  { key: 'services', label: 'Servicios' },
+  { key: 'inventory', label: 'Inventario' },
+  { key: 'collaborators', label: 'Colaboradores' },
   { key: 'pos', label: 'P.O.S.' },
-  { key: 'loyalty', label: 'Loyalty' },
-  { key: 'configuration', label: 'Configuration' },
+  { key: 'loyalty', label: 'Fidelidad' },
+  { key: 'configuration', label: 'Configuración' },
 ] as const
 
 export default function CollaboratorsPage() {
@@ -152,8 +152,8 @@ export default function CollaboratorsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Collaborators</h1>
-          <p className="text-muted-foreground">Manage your team members</p>
+          <h1 className="text-2xl font-bold">Colaboradores</h1>
+          <p className="text-muted-foreground">Gestiona tu equipo de trabajo</p>
         </div>
         {isAdmin && (
           <Dialog open={createSheetOpen} onOpenChange={(open) => {
@@ -163,18 +163,18 @@ export default function CollaboratorsPage() {
             <DialogTrigger asChild>
               <Button size="sm">
                 <UserPlus className="h-4 w-4 mr-2" />
-                Create Employee
+                Crear empleado
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Create Employee Invitation</DialogTitle>
+                <DialogTitle>Crear invitación de empleado</DialogTitle>
               </DialogHeader>
               <div className="space-y-6 py-6">
                 <div className="space-y-4">
-                  <Label className="text-base">Module Permissions</Label>
+                  <Label className="text-base">Permisos de módulos</Label>
                   <p className="text-sm text-muted-foreground">
-                    Select which modules this employee can access.
+                    Selecciona qué módulos puede acceder este empleado.
                   </p>
                   {MODULES.map((mod) => (
                     <div key={mod.key} className="flex items-center justify-between">
@@ -190,29 +190,29 @@ export default function CollaboratorsPage() {
 
                 {!generatedCode ? (
                   <Button onClick={generateCode} disabled={saving} className="w-full">
-                    {saving ? 'Generating...' : 'Generate Invitation Code'}
+                    {saving ? 'Generando...' : 'Generar código de invitación'}
                   </Button>
                 ) : (
                   <div className="space-y-4">
                     <div className="p-4 bg-muted rounded-lg text-center">
-                      <p className="text-xs text-muted-foreground mb-2">Invitation Code</p>
+                      <p className="text-xs text-muted-foreground mb-2">Código de invitación</p>
                       <p className="text-2xl font-mono font-bold tracking-wider">{generatedCode}</p>
                     </div>
                     <Button onClick={copyCode} variant="outline" className="w-full">
                       {copied ? (
                         <>
                           <Check className="h-4 w-4 mr-2" />
-                          Copied!
+                          ¡Copiado!
                         </>
                       ) : (
                         <>
                           <Copy className="h-4 w-4 mr-2" />
-                          Copy Code
+                          Copiar código
                         </>
                       )}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
-                      Share this code with your employee. It can only be used once.
+                      Comparte este código con tu empleado. Solo se puede usar una vez.
                     </p>
                   </div>
                 )}
@@ -226,7 +226,7 @@ export default function CollaboratorsPage() {
       {isAdmin && invitationCodes && invitationCodes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Pending Invitations</CardTitle>
+            <CardTitle className="text-base">Invitaciones pendientes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -235,7 +235,7 @@ export default function CollaboratorsPage() {
                   <div>
                     <p className="font-mono font-medium">{inv.code}</p>
                     <p className="text-xs text-muted-foreground">
-                      Created {new Date(inv.created_at).toLocaleDateString()}
+                      Creado {new Date(inv.created_at).toLocaleDateString('es-PE')}
                     </p>
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -243,7 +243,7 @@ export default function CollaboratorsPage() {
                       .filter(([, v]) => v)
                       .map(([k]) => MODULES.find(m => m.key === k)?.label)
                       .filter(Boolean)
-                      .join(', ') || 'No permissions'}
+                      .join(', ') || 'Sin permisos'}
                   </div>
                 </div>
               ))}
@@ -286,7 +286,7 @@ export default function CollaboratorsPage() {
 
       {(!employees || employees.length === 0) && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No employees yet. {isAdmin && 'Generate an invitation code to add team members.'}</p>
+          <p>Sin empleados aún. {isAdmin && 'Genera un código de invitación para agregar miembros del equipo.'}</p>
         </div>
       )}
 
@@ -305,7 +305,7 @@ export default function CollaboratorsPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-base">Work Schedule</Label>
+                  <Label className="text-base">Horario de trabajo</Label>
                 </div>
                 <ScheduleEditor
                   schedule={selectedEmployee.work_schedule}
@@ -321,7 +321,7 @@ export default function CollaboratorsPage() {
                   onClick={() => deleteEmployee(selectedEmployee.id)}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Remove Employee
+                  Eliminar empleado
                 </Button>
               </div>
             </div>
@@ -342,6 +342,7 @@ function ScheduleEditor({
   saving: boolean
 }) {
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  const daysLabels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
   const [localSchedule, setLocalSchedule] = useState(schedule || {})
 
   function toggleDay(day: string) {
@@ -367,13 +368,13 @@ function ScheduleEditor({
 
   return (
     <div className="space-y-3">
-      {days.map((day) => (
+      {days.map((day, idx) => (
         <div key={day} className="flex items-center gap-2">
           <Switch
             checked={localSchedule[day]?.enabled || false}
             onCheckedChange={() => toggleDay(day)}
           />
-          <span className="w-24 text-sm capitalize">{day}</span>
+          <span className="w-24 text-sm">{daysLabels[idx]}</span>
           {localSchedule[day]?.enabled && (
             <>
               <Input
@@ -399,7 +400,7 @@ function ScheduleEditor({
         size="sm"
         className="w-full mt-4"
       >
-        {saving ? 'Saving...' : 'Save Schedule'}
+        {saving ? 'Guardando...' : 'Guardar horario'}
       </Button>
     </div>
   )

@@ -211,8 +211,8 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Inventory</h1>
-          <p className="text-muted-foreground">Manage your products and stock</p>
+          <h1 className="text-2xl font-bold">Inventario</h1>
+          <p className="text-muted-foreground">Gestiona tus productos y stock</p>
         </div>
         {isAdmin && (
           <div className="flex gap-2">
@@ -220,16 +220,16 @@ export default function InventoryPage() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" onClick={openSettings}>
                   <Settings className="h-4 w-4 mr-2" />
-                  Settings
+                  Configuración
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Inventory Settings</DialogTitle>
+                  <DialogTitle>Configuración de inventario</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Minimum Stock Threshold</Label>
+                    <Label>Umbral de stock mínimo</Label>
                     <Input
                       type="number"
                       placeholder="5"
@@ -237,11 +237,11 @@ export default function InventoryPage() {
                       onChange={(e) => setMinStockThreshold(e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Products at or below this quantity will show in low stock alerts.
+                      Los productos en o por debajo de esta cantidad mostrarán alertas de stock bajo.
                     </p>
                   </div>
                   <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
-                    {saving ? 'Saving...' : 'Save Settings'}
+                    {saving ? 'Guardando...' : 'Guardar configuración'}
                   </Button>
                 </div>
               </DialogContent>
@@ -257,24 +257,24 @@ export default function InventoryPage() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <FolderPlus className="h-4 w-4 mr-2" />
-                  Create Category
+                  Crear categoría
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingCategory ? 'Edit Category' : 'Create Category'}</DialogTitle>
+                  <DialogTitle>{editingCategory ? 'Editar categoría' : 'Crear categoría'}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Category Name</Label>
+                    <Label>Nombre de la categoría</Label>
                     <Input
-                      placeholder="e.g., Hair Products"
+                      placeholder="ej., Productos para el cabello"
                       value={categoryName}
                       onChange={(e) => setCategoryName(e.target.value)}
                     />
                   </div>
                   <Button onClick={handleSaveCategory} disabled={saving || !categoryName.trim()} className="w-full">
-                    {saving ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
+                    {saving ? 'Guardando...' : (editingCategory ? 'Actualizar' : 'Crear')}
                   </Button>
                 </div>
               </DialogContent>
@@ -287,33 +287,33 @@ export default function InventoryPage() {
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Product
+                  Crear producto
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingProduct ? 'Edit Product' : 'Create Product'}</DialogTitle>
+                  <DialogTitle>{editingProduct ? 'Editar producto' : 'Crear producto'}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Name *</Label>
+                    <Label>Nombre *</Label>
                     <Input
-                      placeholder="e.g., Hair Gel"
+                      placeholder="ej., Gel para cabello"
                       value={productName}
                       onChange={(e) => setProductName(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Description</Label>
+                    <Label>Descripción</Label>
                     <Textarea
-                      placeholder="Product description..."
+                      placeholder="Descripción del producto..."
                       value={productDescription}
                       onChange={(e) => setProductDescription(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Sale Price (S/) *</Label>
+                      <Label>Precio de venta (S/) *</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -323,7 +323,7 @@ export default function InventoryPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Cost Price (S/) *</Label>
+                      <Label>Precio de costo (S/) *</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -335,7 +335,7 @@ export default function InventoryPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Profit</Label>
+                      <Label>Ganancia</Label>
                       <Input
                         value={formatCurrency(profit)}
                         disabled
@@ -353,10 +353,10 @@ export default function InventoryPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Category</Label>
+                    <Label>Categoría</Label>
                     <Select value={productCategoryId} onValueChange={setProductCategoryId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Selecciona categoría" />
                       </SelectTrigger>
                       <SelectContent>
                         {categories?.map((cat) => (
@@ -370,7 +370,7 @@ export default function InventoryPage() {
                     disabled={saving || !productName.trim() || !productSalePrice || !productCostPrice || !productStock} 
                     className="w-full"
                   >
-                    {saving ? 'Saving...' : (editingProduct ? 'Update' : 'Create')}
+                    {saving ? 'Guardando...' : (editingProduct ? 'Actualizar' : 'Crear')}
                   </Button>
                 </div>
               </DialogContent>
@@ -394,10 +394,10 @@ export default function InventoryPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem onClick={() => openEditCategory(cat)}>
-                      <Pencil className="h-4 w-4 mr-2" /> Edit
+                      <Pencil className="h-4 w-4 mr-2" /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleDeleteCategory(cat.id)} className="text-destructive">
-                      <Trash2 className="h-4 w-4 mr-2" /> Delete
+                      <Trash2 className="h-4 w-4 mr-2" /> Eliminar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -432,10 +432,10 @@ export default function InventoryPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                       <DropdownMenuItem onClick={() => openEditProduct(product)}>
-                        <Pencil className="h-4 w-4 mr-2" /> Edit
+                        <Pencil className="h-4 w-4 mr-2" /> Editar
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleDeleteProduct(product.id)} className="text-destructive">
-                        <Trash2 className="h-4 w-4 mr-2" /> Delete
+                        <Trash2 className="h-4 w-4 mr-2" /> Eliminar
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -447,17 +447,17 @@ export default function InventoryPage() {
                 )}
                 <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                   <div>
-                    <p className="text-muted-foreground">Sale Price</p>
+                    <p className="text-muted-foreground">Precio de venta</p>
                     <p className="font-medium">{formatCurrency(product.sale_price)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Cost Price</p>
+                    <p className="text-muted-foreground">Precio de costo</p>
                     <p className="font-medium">{formatCurrency(product.cost_price)}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <div>
-                    <p className="text-muted-foreground text-xs">Profit</p>
+                    <p className="text-muted-foreground text-xs">Ganancia</p>
                     <p className="font-medium text-green-600">{formatCurrency(product.sale_price - product.cost_price)}</p>
                   </div>
                   <div className="text-right">
@@ -473,7 +473,7 @@ export default function InventoryPage() {
 
       {(!products || products.length === 0) && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No products yet. {isAdmin && 'Create your first product to get started.'}</p>
+          <p>Sin productos aún. {isAdmin && 'Crea tu primer producto para comenzar.'}</p>
         </div>
       )}
     </div>

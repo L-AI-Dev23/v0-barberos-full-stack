@@ -121,13 +121,13 @@ export default function LoyaltyPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Loyalty Program</h1>
-          <p className="text-muted-foreground">Manage your loyal customers</p>
+          <h1 className="text-2xl font-bold">Programa de fidelidad</h1>
+          <p className="text-muted-foreground">Gestiona tus clientes leales</p>
         </div>
         {isAdmin && (
           <Button onClick={generateQR} disabled={generating}>
             <QrCode className="h-4 w-4 mr-2" />
-            {generating ? 'Generating...' : 'Generate QR Code'}
+            {generating ? 'Generando...' : 'Generar código QR'}
           </Button>
         )}
       </div>
@@ -138,10 +138,10 @@ export default function LoyaltyPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <QrCode className="h-5 w-5" />
-              Loyalty QR Code
+              Código QR de fidelidad
             </CardTitle>
             <CardDescription>
-              Clients can scan this code to access their loyalty card
+              Los clientes pueden escanear este código para acceder a su tarjeta de fidelidad
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
@@ -155,7 +155,7 @@ export default function LoyaltyPage() {
               </Button>
             </div>
             <Button variant="outline" onClick={() => setQrModalOpen(false)}>
-              Close
+              Cerrar
             </Button>
           </CardContent>
         </Card>
@@ -165,7 +165,7 @@ export default function LoyaltyPage() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search clients..."
+          placeholder="Buscar clientes..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -188,7 +188,7 @@ export default function LoyaltyPage() {
                 <div className="flex-1">
                   <p className="font-medium">{client.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    Member since {new Date(client.created_at).toLocaleDateString()}
+                    Miembro desde {new Date(client.created_at).toLocaleDateString('es-PE')}
                   </p>
                 </div>
               </div>
@@ -196,7 +196,7 @@ export default function LoyaltyPage() {
               {/* Loyalty Card Preview */}
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Loyalty Progress</span>
+                  <span className="text-sm font-medium">Progreso de fidelidad</span>
                   <span className="text-sm">{client.stamps}/5</span>
                 </div>
                 <div className="flex gap-1">
@@ -218,7 +218,7 @@ export default function LoyaltyPage() {
                 {client.stamps >= 5 && (
                   <div className="mt-2 flex items-center gap-1 text-sm text-green-600">
                     <Gift className="h-4 w-4" />
-                    Free service available!
+                    ¡Servicio gratuito disponible!
                   </div>
                 )}
               </div>
@@ -229,7 +229,7 @@ export default function LoyaltyPage() {
 
       {filteredClients.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{search ? 'No clients found matching your search.' : 'No loyalty clients yet.'}</p>
+          <p>{search ? 'No se encontraron clientes que coincidan con tu búsqueda.' : 'Sin clientes de fidelidad aún.'}</p>
         </div>
       )}
 
@@ -245,7 +245,7 @@ export default function LoyaltyPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center mb-4">
-                    <h3 className="font-semibold">Loyalty Card</h3>
+                    <h3 className="font-semibold">Tarjeta de fidelidad</h3>
                     <p className="text-sm text-muted-foreground">
                       {selectedClient.stamps}/5 stamps collected
                     </p>

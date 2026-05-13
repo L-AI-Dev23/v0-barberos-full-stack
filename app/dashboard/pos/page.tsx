@@ -268,8 +268,8 @@ export default function POSPage() {
             setSelectedCategory(null)
           }}>
             <TabsList className="w-full">
-              <TabsTrigger value="services" className="flex-1">Services</TabsTrigger>
-              <TabsTrigger value="products" className="flex-1">Products</TabsTrigger>
+              <TabsTrigger value="services" className="flex-1">Servicios</TabsTrigger>
+              <TabsTrigger value="products" className="flex-1">Productos</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -277,7 +277,7 @@ export default function POSPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search..."
+              placeholder="Buscar..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -292,7 +292,7 @@ export default function POSPage() {
                 className="cursor-pointer"
                 onClick={() => setSelectedCategory(null)}
               >
-                All
+                Todos
               </Badge>
               {categories.map((cat) => (
                 <Badge
@@ -339,7 +339,7 @@ export default function POSPage() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
-            Cart
+            Carrito
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0">
@@ -347,7 +347,7 @@ export default function POSPage() {
           <ScrollArea className="flex-1 -mx-6 px-6">
             {cart.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                Cart is empty
+                Carrito vacío
               </p>
             ) : (
               <div className="space-y-3">
@@ -397,16 +397,16 @@ export default function POSPage() {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                Select Client (optional)
+                Seleccionar cliente (opcional)
               </Label>
               <Select value={selectedClient} onValueChange={setSelectedClient}>
                 <SelectTrigger>
-                  <SelectValue placeholder="No client selected" />
+                  <SelectValue placeholder="Sin cliente seleccionado" />
                 </SelectTrigger>
                 <SelectContent>
                   {clients?.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
-                      {client.name} ({client.stamps}/5 stamps)
+                      {client.name} ({client.stamps}/5 estampillas)
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -414,14 +414,14 @@ export default function POSPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Select Employee</Label>
+              <Label>Seleccionar empleado</Label>
               <Select 
                 value={selectedEmployee} 
                 onValueChange={setSelectedEmployee}
                 disabled={!isAdmin}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select employee" />
+                  <SelectValue placeholder="Selecciona empleado" />
                 </SelectTrigger>
                 <SelectContent>
                   {employees?.map((emp) => (
@@ -435,7 +435,7 @@ export default function POSPage() {
 
             <div className="pt-2 border-t">
               <div className="flex justify-between text-sm mb-1">
-                <span className="text-muted-foreground">Commission</span>
+                <span className="text-muted-foreground">Comisión</span>
                 <span>{formatCurrency(totalCommission)}</span>
               </div>
               <div className="flex justify-between text-lg font-bold">
@@ -450,13 +450,13 @@ export default function POSPage() {
               disabled={cart.length === 0 || !selectedEmployee || processing}
               onClick={completeSale}
             >
-              {processing ? 'Processing...' : success ? (
+              {processing ? 'Procesando...' : success ? (
                 <>
                   <Check className="h-4 w-4 mr-2" />
-                  Sale Complete!
+                  ¡Venta completada!
                 </>
               ) : (
-                'Complete Sale'
+                'Completar venta'
               )}
             </Button>
           </div>

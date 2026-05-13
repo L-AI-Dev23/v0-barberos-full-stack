@@ -80,30 +80,30 @@ export default function ConfigurationPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold">Configuration</h1>
-        <p className="text-muted-foreground">Manage your organization settings</p>
+        <h1 className="text-2xl font-bold">Configuración</h1>
+        <p className="text-muted-foreground">Gestiona los ajustes de tu organización</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building className="h-5 w-5" />
-            Business Information
+            Información del negocio
           </CardTitle>
           <CardDescription>
-            Update your business name and logo
+            Actualiza el nombre de tu negocio y logo
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Logo Upload */}
           <div className="space-y-4">
-            <Label>Business Logo</Label>
+            <Label>Logo del negocio</Label>
             <div className="flex items-center gap-4">
               <div className="h-24 w-24 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden bg-muted">
                 {logoUrl ? (
                   <img
                     src={logoUrl}
-                    alt="Business logo"
+                    alt="Logo del negocio"
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -116,7 +116,7 @@ export default function ConfigurationPage() {
                   className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
                 >
                   <Upload className="h-4 w-4" />
-                  {uploading ? 'Uploading...' : 'Upload Logo'}
+                  {uploading ? 'Subiendo...' : 'Subir logo'}
                 </Label>
                 <Input
                   id="logo-upload"
@@ -127,7 +127,7 @@ export default function ConfigurationPage() {
                   className="hidden"
                 />
                 <p className="text-xs text-muted-foreground mt-2">
-                  Recommended: Square image, at least 200x200px
+                  Recomendado: Imagen cuadrada, al menos 200x200px
                 </p>
               </div>
             </div>
@@ -135,12 +135,12 @@ export default function ConfigurationPage() {
 
           {/* Business Name */}
           <div className="space-y-2">
-            <Label htmlFor="businessName">Business Name</Label>
+            <Label htmlFor="businessName">Nombre del negocio</Label>
             <Input
               id="businessName"
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
-              placeholder="Your Barbershop Name"
+              placeholder="Nombre de tu barbería"
             />
           </div>
 
@@ -150,13 +150,13 @@ export default function ConfigurationPage() {
             disabled={saving || !businessName.trim()}
             className="w-full"
           >
-            {saving ? 'Saving...' : success ? (
+            {saving ? 'Guardando...' : success ? (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Saved!
+                ¡Guardado!
               </>
             ) : (
-              'Save Changes'
+              'Guardar cambios'
             )}
           </Button>
         </CardContent>
