@@ -54,30 +54,9 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false)
 
   const today = new Date().toISOString().split('T')[0]
-  
-  // Redirect employees away from dashboard
-  useEffect(() => {
-    if (!loading && profile && !isAdmin) {
-      router.push('/dashboard/earnings')
-    }
-  }, [profile, isAdmin, router, loading])
-
-  // Show loading while auth is loading
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    )
-  }
-
-  // If not admin, show nothing (redirect will happen via useEffect)
-  if (!isAdmin) {
-    return null
-  }
 
   // Fetch today's sales
-  const { data: sales, mutate: mutateSales } = useSWR<Sale[]>(
+  const { data: sales } = useSWR<Sale[]>(
     profile?.organization_id ? `sales-${today}` : null,
     async () => {
       const { data } = await supabase
@@ -158,7 +137,28 @@ export default function DashboardPage() {
       }
     }
     loadSettings()
-  }, [profile?.organization_id])
+  }, [profile?.organization_id, supabase])
+  
+  // Redirect employees away from dashboard
+  useEffect(() => {
+    if (!loading && profile && !isAdmin) {
+      router.push('/dashboard/earnings')
+    }
+  }, [profile, isAdmin, router, loading])
+
+  // Show loading while auth is loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    )
+  }
+
+  // If not admin, show nothing (redirect will happen via useEffect)
+  if (!isAdmin) {
+    return null
+  }
 
   // Calculate metrics
   const dailyRevenue = sales?.reduce((sum, sale) => sum + Number(sale.total), 0) || 0
