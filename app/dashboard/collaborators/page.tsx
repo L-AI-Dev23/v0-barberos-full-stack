@@ -10,12 +10,12 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { UserPlus, Copy, Check, User, Calendar, Trash2, X } from 'lucide-react'
 import type { Profile, InvitationCode, ModulePermissions } from '@/lib/types/database'
 
@@ -148,20 +148,20 @@ export default function CollaboratorsPage() {
           <p className="text-muted-foreground">Manage your team members</p>
         </div>
         {isAdmin && (
-          <Sheet open={createSheetOpen} onOpenChange={(open) => {
+          <Dialog open={createSheetOpen} onOpenChange={(open) => {
             setCreateSheetOpen(open)
             if (!open) resetCreateSheet()
           }}>
-            <SheetTrigger asChild>
+            <DialogTrigger asChild>
               <Button size="sm">
                 <UserPlus className="h-4 w-4 mr-2" />
                 Create Employee
               </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Create Employee Invitation</SheetTitle>
-              </SheetHeader>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create Employee Invitation</DialogTitle>
+              </DialogHeader>
               <div className="space-y-6 py-6">
                 <div className="space-y-4">
                   <Label className="text-base">Module Permissions</Label>
@@ -209,8 +209,8 @@ export default function CollaboratorsPage() {
                   </div>
                 )}
               </div>
-            </SheetContent>
-          </Sheet>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 
