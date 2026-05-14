@@ -84,58 +84,58 @@ export default function EarningsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Earnings</h1>
-          <p className="text-muted-foreground">Track your commissions and performance</p>
+          <h1 className="text-2xl font-bold">Ganancias</h1>
+          <p className="text-muted-foreground">Monitorea tus comisiones y desempeño</p>
         </div>
       </div>
 
-      {/* Period Selector */}
+      {/* Selector de período */}
       <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
         <TabsList>
-          <TabsTrigger value="today">Today</TabsTrigger>
-          <TabsTrigger value="week">This Week</TabsTrigger>
-          <TabsTrigger value="month">This Month</TabsTrigger>
+          <TabsTrigger value="today">Hoy</TabsTrigger>
+          <TabsTrigger value="week">Esta semana</TabsTrigger>
+          <TabsTrigger value="month">Este mes</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {/* Summary Cards */}
+      {/* Tarjetas resumen */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <CardTitle className="text-sm font-medium">Ganancias totales</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{formatCurrency(totalEarnings)}</div>
             <p className="text-xs text-muted-foreground">
-              {period === 'today' ? 'Today' : period === 'week' ? 'Last 7 days' : 'Last 30 days'}
+              {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Services Performed</CardTitle>
+            <CardTitle className="text-sm font-medium">Servicios realizados</CardTitle>
             <Scissors className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{totalServices}</div>
             <p className="text-xs text-muted-foreground">
-              {period === 'today' ? 'Today' : period === 'week' ? 'Last 7 days' : 'Last 30 days'}
+              {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Service Breakdown */}
+      {/* Desglose de servicios */}
       {Object.keys(serviceBreakdown).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Earnings Breakdown
+              Desglose de ganancias
             </CardTitle>
-            <CardDescription>Commission by service type</CardDescription>
+            <CardDescription>Comisión por tipo de servicio</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -145,7 +145,7 @@ export default function EarningsPage() {
                   <div key={name} className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">{name}</p>
-                      <p className="text-sm text-muted-foreground">{data.count} performed</p>
+                      <p className="text-sm text-muted-foreground">{data.count} realizados</p>
                     </div>
                     <p className="font-semibold">{formatCurrency(data.commission)}</p>
                   </div>
@@ -155,11 +155,11 @@ export default function EarningsPage() {
         </Card>
       )}
 
-      {/* Detailed History */}
+      {/* Historial detallado */}
       <Card>
         <CardHeader>
-          <CardTitle>Service History</CardTitle>
-          <CardDescription>Detailed list of your services</CardDescription>
+          <CardTitle>Historial de servicios</CardTitle>
+          <CardDescription>Lista detallada de tus servicios</CardDescription>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[400px]">
@@ -188,7 +188,7 @@ export default function EarningsPage() {
                           +{formatCurrency(sale.total_commission)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Sale: {formatCurrency(sale.total)}
+                          Venta: {formatCurrency(sale.total)}
                         </p>
                       </div>
                     </div>
@@ -207,7 +207,7 @@ export default function EarningsPage() {
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                No services recorded for this period.
+                Sin servicios registrados en este período.
               </p>
             )}
           </ScrollArea>
