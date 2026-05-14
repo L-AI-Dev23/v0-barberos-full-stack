@@ -187,9 +187,9 @@ export default function ServicesPage() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <FolderPlus className="h-4 w-4 mr-2" />
-                  Crear categoría
+                <Button variant="outline" size="sm" className="md:px-3">
+                  <FolderPlus className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Crear categoría</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -217,9 +217,9 @@ export default function ServicesPage() {
               if (!open) resetServiceForm()
             }}>
               <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear servicio
+                <Button size="sm" className="md:px-3">
+                  <Plus className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Crear servicio</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>

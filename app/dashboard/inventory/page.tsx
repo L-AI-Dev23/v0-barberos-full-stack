@@ -218,9 +218,9 @@ export default function InventoryPage() {
           <div className="flex gap-2">
             <Dialog open={settingsModalOpen} onOpenChange={setSettingsModalOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" onClick={openSettings}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Configuración
+                <Button variant="outline" size="sm" onClick={openSettings} className="md:px-3">
+                  <Settings className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Configuración</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -255,9 +255,9 @@ export default function InventoryPage() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <FolderPlus className="h-4 w-4 mr-2" />
-                  Crear categoría
+                <Button variant="outline" size="sm" className="md:px-3">
+                  <FolderPlus className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Crear categoría</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -285,9 +285,9 @@ export default function InventoryPage() {
               if (!open) resetProductForm()
             }}>
               <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear producto
+                <Button size="sm" className="md:px-3">
+                  <Plus className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Crear producto</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>

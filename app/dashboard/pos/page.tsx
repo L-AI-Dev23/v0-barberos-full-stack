@@ -254,7 +254,7 @@ export default function POSPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex flex-col lg:flex-row gap-6">
+    <div className="lg:h-[calc(100vh-6rem)] flex flex-col lg:flex-row gap-6">
       {/* Left side - Items */}
       <div className="flex-1 flex flex-col min-h-0">
         <div className="space-y-4 mb-4">
@@ -309,30 +309,35 @@ export default function POSPage() {
         </div>
 
         {/* Items Grid */}
-        <ScrollArea className="flex-1">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pr-4">
-            {filteredItems?.map((item) => (
-              <Card
-                key={item.id}
-                className="cursor-pointer hover:border-primary transition-colors"
-                onClick={() => addToCart(item, mode === 'services' ? 'service' : 'product')}
-              >
-                <CardContent className="p-4">
-                  <p className="font-medium truncate">{item.name}</p>
-                  <p className="text-lg font-bold text-primary">
-                    {formatCurrency(mode === 'services' ? (item as Service).cost : (item as Product).sale_price)}
-                  </p>
-                  {mode === 'products' && (
-                    <p className="text-xs text-muted-foreground">
-                      Stock: {(item as Product).stock}
+        <div className="lg:flex-1 lg:overflow-hidden">
+          <ScrollArea className="h-auto lg:h-full">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pr-4">
+              {filteredItems?.map((item) => (
+                <Card
+                  key={item.id}
+                  className="cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => addToCart(item, mode === 'services' ? 'service' : 'product')}
+                >
+                  <CardContent className="p-4">
+                    <p className="font-medium truncate">{item.name}</p>
+                    <p className="text-lg font-bold text-primary">
+                      {formatCurrency(mode === 'services' ? (item as Service).cost : (item as Product).sale_price)}
                     </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </ScrollArea>
+                    {mode === 'products' && (
+                      <p className="text-xs text-muted-foreground">
+                        Stock: {(item as Product).stock}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       </div>
+
+      {/* Mobile separator */}
+      <div className="lg:hidden border-t pt-4" />
 
       {/* Right side - Cart */}
       <Card className="lg:w-96 flex flex-col">
