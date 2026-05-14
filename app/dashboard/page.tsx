@@ -37,37 +37,11 @@ import {
 } from 'recharts'
 import type { Sale, LoyaltyClient, Product } from '@/lib/types/database'
 
-type PeriodType = 'today' | 'week' | 'month'
-
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
     style: 'currency',
     currency: 'PEN',
   }).format(amount)
-}
-
-function getDateRange(period: PeriodType) {
-  const now = new Date()
-  const start = new Date(now)
-  
-  switch (period) {
-    case 'today':
-      start.setHours(0, 0, 0, 0)
-      break
-    case 'week':
-      start.setDate(now.getDate() - now.getDay())
-      start.setHours(0, 0, 0, 0)
-      break
-    case 'month':
-      start.setDate(1)
-      start.setHours(0, 0, 0, 0)
-      break
-  }
-  
-  return {
-    startDate: start.toISOString().split('T')[0],
-    endDate: now.toISOString().split('T')[0],
-  }
 }
 
 export default function DashboardPage() {
@@ -78,32 +52,32 @@ export default function DashboardPage() {
   const [openingTime, setOpeningTime] = useState('09:00')
   const [closingTime, setClosingTime] = useState('21:00')
   const [saving, setSaving] = useState(false)
-  const [period, setPeriod] = useState<PeriodType>('today')
+
+  const today = new Date().toISOString().split('T')[0]
 
   // Fetch today's sales
   const { data: sales } = useSWR<Sale[]>(
-    profile?.organization_id ? `sales-${period}-${startDate}-${endDate}` : null,
+    profile?.organization_id ? `sales-${today}` : null,
     async () => {
       const { data } = await supabase
         .from('sales')
         .select('*, employee:profiles(*), items:sale_items(*)')
         .eq('organization_id', profile!.organization_id)
-        .gte('created_at', `${startDate}T00:00:00`)
-        .lte('created_at', `${endDate}T23:59:59`)
+        .gte('created_at', `${today}T00:00:00`)
+        .lte('created_at', `${today}T23:59:59`)
       return data || []
     }
   )
 
   // Fetch recent clients
   const { data: recentClients } = useSWR<(LoyaltyClient & { services_count: number })[]>(
-    profile?.organization_id ? `recent-clients-${period}-${startDate}-${endDate}` : null,
+    profile?.organization_id ? `recent-clients-${today}` : null,
     async () => {
       const { data: clientSales } = await supabase
         .from('sales')
         .select('client_id, client:loyalty_clients(*)')
         .eq('organization_id', profile!.organization_id)
-        .gte('created_at', `${startDate}T00:00:00`)
-        .lte('created_at', `${endDate}T23:59:59`)
+        .gte('created_at', `${today}T00:00:00`)
         .not('client_id', 'is', null)
 
       if (!clientSales) return []
@@ -214,36 +188,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Panel</h1>
-          <p className="text-muted-foreground">
-            {period === 'today' ? 'Resumen del rendimiento de hoy' : 
-             period === 'week' ? 'Resumen de la semana' : 
-             'Resumen del mes'}
-          </p>
-        </div>
-        
-        {/* Period Selector Buttons */}
-        <div className="flex gap-2">
-          <Button 
-            variant={period === 'today' ? 'default' : 'outline'}
-            onClick={() => setPeriod('today')}
-            size="sm"
-          >
-            Hoy
-          </Button>
-          <Button 
-            variant={period === 'week' ? 'default' : 'outline'}
-            onClick={() => setPeriod('week')}
-            size="sm"
-          >
-            Semana
-          </Button>
-          <Button 
-            variant={period === 'month' ? 'default' : 'outline'}
-            onClick={() => setPeriod('month')}
-            size="sm"
-          >
-            Mes
-          </Button>
+          <p className="text-muted-foreground">Resumen del rendimiento de hoy</p>
         </div>
       </div>
 
@@ -251,30 +196,18 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {period === 'today' ? 'Ingresos del día' : 
-               period === 'week' ? 'Ingresos de la semana' : 
-               'Ingresos del mes'}
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Ingresos del día</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(dailyRevenue)}</div>
-            <p className="text-xs text-muted-foreground">
-              {period === 'today' ? 'Ventas totales hoy' : 
-               period === 'week' ? 'Ventas totales esta semana' : 
-               'Ventas totales este mes'}
-            </p>
+            <p className="text-xs text-muted-foreground">Ventas totales hoy</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {period === 'today' ? 'Servicios hoy' : 
-               period === 'week' ? 'Servicios esta semana' : 
-               'Servicios este mes'}
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Servicios hoy</CardTitle>
             <Scissors className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -290,11 +223,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalCommissions)}</div>
-            <p className="text-xs text-muted-foreground">
-              {period === 'today' ? 'Comisiones totales hoy' : 
-               period === 'week' ? 'Comisiones totales esta semana' : 
-               'Comisiones totales este mes'}
-            </p>
+            <p className="text-xs text-muted-foreground">Comisiones totales</p>
           </CardContent>
         </Card>
 
