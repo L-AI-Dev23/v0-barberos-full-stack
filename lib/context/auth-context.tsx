@@ -58,6 +58,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (data) {
+          // If role is not set and user has organization, check if they should be admin
+          if (!data.role && data.organization_id) {
+            const { data: otherUsers } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('organization_id', data.organization_id)
+              .neq('id', userId)
+            
+            // If no other users, make this user admin
+            if (!otherUsers || otherUsers.length === 0) {
+              const { data: updatedData } = await supabase
+                .from('profiles')
+                .update({
+                  role: 'admin',
+                  module_permissions: {
+                    dashboard: true,
+                    services: true,
+                    inventory: true,
+                    collaborators: true,
+                    pos: true,
+                    loyalty: true,
+                    configuration: true,
+                  }
+                })
+                .eq('id', userId)
+                .select('*, organizations(*)')
+                .single()
+              
+              if (updatedData) {
+                setProfile(updatedData)
+                fetchingRef.current = false
+                return
+              }
+            }
+          }
+          
           setProfile(data)
           fetchingRef.current = false
           return

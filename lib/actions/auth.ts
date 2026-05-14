@@ -155,5 +155,38 @@ export async function getCurrentUser() {
     .eq('id', user.id)
     .single()
 
+  // If profile exists but role is not set, determine it
+  if (profile && !profile.role && profile.organization_id) {
+    // Check if this is the first user of the organization
+    const { data: otherUsers } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('organization_id', profile.organization_id)
+      .neq('id', user.id)
+    
+    // If no other users, make this user admin
+    if (!otherUsers || otherUsers.length === 0) {
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .update({
+          role: 'admin',
+          module_permissions: {
+            dashboard: true,
+            services: true,
+            inventory: true,
+            collaborators: true,
+            pos: true,
+            loyalty: true,
+            configuration: true,
+          }
+        })
+        .eq('id', user.id)
+        .select('*, organizations(*)')
+        .single()
+      
+      return updatedProfile
+    }
+  }
+
   return profile
 }
