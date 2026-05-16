@@ -30,6 +30,7 @@ export interface ModulePermissions {
   collaborators?: boolean
   pos?: boolean
   loyalty?: boolean
+  appointments?: boolean
   configuration?: boolean
 }
 
@@ -136,6 +137,22 @@ export interface OrganizationQRCode {
   organization_id: string
   qr_code: string
   created_at: string
+}
+
+export interface Appointment {
+  id: string
+  organization_id: string
+  client_id: string | null
+  service_id: string
+  employee_id: string | null
+  appointment_time: string
+  status: 'pendiente' | 'confirmada' | 'completada' | 'cancelada'
+  notes: string | null
+  created_at: string
+  updated_at: string
+  client?: LoyaltyClient
+  service?: Service
+  employee?: Profile
 }
 
 export interface CartItem {

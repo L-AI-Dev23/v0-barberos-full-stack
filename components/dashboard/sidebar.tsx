@@ -13,6 +13,7 @@ import {
   Users,
   ShoppingCart,
   Heart,
+  CalendarClock,
   Settings,
   Wallet,
   LogOut,
@@ -28,6 +29,7 @@ const adminNavItems = [
   { href: '/dashboard/collaborators', label: 'Colaboradores', icon: Users, permission: 'collaborators' as const },
   { href: '/dashboard/pos', label: 'P.O.S.', icon: ShoppingCart, permission: 'pos' as const },
   { href: '/dashboard/loyalty', label: 'Fidelidad', icon: Heart, permission: 'loyalty' as const },
+  { href: '/dashboard/appointments', label: 'Citas', icon: CalendarClock, permission: 'appointments' as const },
   { href: '/dashboard/configuration', label: 'Configuración', icon: Settings, permission: 'configuration' as const },
 ]
 
