@@ -4,9 +4,7 @@ export interface Organization {
   id: string
   name: string
   logo_url: string | null
-  opening_time: string
-  closing_time: string
-  min_stock_threshold: number
+  coupon_service_id: string | null
   created_at: string
   updated_at: string
 }
@@ -101,20 +99,9 @@ export interface LoyaltyClient {
   name: string
   organization_id: string
   stamps: number
+  coupons: number
   created_at: string
   updated_at: string
-}
-
-export interface LoyaltyCoupon {
-  id: string
-  organization_id: string
-  client_id: string
-  description: string
-  status: 'disponible' | 'usado' | 'expirado'
-  created_at: string
-  used_at: string | null
-  sale_id: string | null
-  client?: LoyaltyClient
 }
 
 export interface Sale {

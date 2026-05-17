@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Search, Plus, Minus, Trash2, User, ShoppingCart, Check } from 'lucide-react'
-import type { Service, Product, LoyaltyClient, Profile, CartItem, ServiceCategory, ProductCategory, LoyaltyCoupon } from '@/lib/types/database'
+import type { Service, Product, LoyaltyClient, Profile, CartItem, ServiceCategory, ProductCategory, Organization } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -38,7 +38,7 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [selectedClient, setSelectedClient] = useState<string>('')
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
-  const [selectedCoupon, setSelectedCoupon] = useState<string>('')
+  const [applyCoupon, setApplyCoupon] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -115,15 +115,15 @@ export default function POSPage() {
     }
   )
 
-  const { data: availableCoupons } = useSWR<LoyaltyCoupon[]>(
-    selectedClient ? `pos-coupons-${selectedClient}` : null,
+  const { data: organization } = useSWR<Organization>(
+    profile?.organization_id ? 'pos-org' : null,
     async () => {
       const { data } = await supabase
-        .from('loyalty_coupons')
+        .from('organizations')
         .select('*')
-        .eq('client_id', selectedClient)
-        .eq('status', 'disponible')
-      return data || []
+        .eq('id', profile!.organization_id)
+        .single()
+      return data
     }
   )
 
@@ -146,8 +146,16 @@ export default function POSPage() {
     })
   }, [items, search, selectedCategory])
 
+  // Get selected client coupons
+  const selectedClientData = clients?.find(c => c.id === selectedClient)
+  const clientCoupons = selectedClientData?.coupons || 0
+  
+  // Calculate discount based on configured service
+  const couponServiceId = organization?.coupon_service_id
+  const couponServiceItem = cart.find(item => item.id === couponServiceId && item.type === 'service')
+  const discount = applyCoupon && couponServiceItem ? couponServiceItem.price : 0
+
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const discount = selectedCoupon ? cartTotal : 0
   const total = cartTotal - discount
   const totalCommission = cart.reduce((sum, item) => sum + item.commission * item.quantity, 0)
 

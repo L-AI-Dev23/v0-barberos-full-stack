@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Scissors, Calendar, Clock, User, Heart, ArrowLeft, AlertCircle, X, Gift } from 'lucide-react'
-import type { Organization, LoyaltyClient, Service, Profile, Appointment, LoyaltyCoupon } from '@/lib/types/database'
+import type { Organization, LoyaltyClient, Service, Profile, Appointment } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -71,7 +71,6 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
   const [bookingSubmitting, setBookingSubmitting] = useState(false)
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [appointments, setAppointments] = useState<(Appointment & { service?: Service; employee?: Profile })[]>([])
-  const [coupons, setCoupons] = useState<LoyaltyCoupon[]>([])
 
   // Load organization
   useEffect(() => {
@@ -134,15 +133,6 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
         .order('appointment_time', { ascending: true })
       
       setAppointments(appointmentsData || [])
-
-      // Load coupons
-      const { data: couponsData } = await supabase
-        .from('loyalty_coupons')
-        .select('*')
-        .eq('client_id', existingClient.id)
-        .eq('status', 'disponible')
-      
-      setCoupons(couponsData || [])
     } else {
       // Create new client
       const { data: newClient, error: createError } = await supabase
@@ -366,28 +356,25 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
             </Card>
 
             {/* Available Coupons */}
-            {coupons.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gift className="h-5 w-5 text-green-600" />
-                    Servicios gratis disponibles
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {coupons.map((coupon) => (
-                    <div key={coupon.id} className="p-4 bg-green-50 dark:bg-green-900/10 border-l-4 border-l-green-600 rounded">
-                      <p className="font-semibold text-green-700 dark:text-green-400">
-                        {coupon.description}
-                      </p>
-                      <p className="text-sm text-green-600 dark:text-green-500 mt-1">
-                        Válido desde {new Date(coupon.created_at).toLocaleDateString('es-PE')}
-                      </p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className={`p-3 rounded-full ${client.coupons > 0 ? 'bg-green-100' : 'bg-muted'}`}>
+                    <Gift className={`h-6 w-6 ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`} />
+                  </div>
+                  <div>
+                    <p className={`text-xl font-bold ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {client.coupons} {client.coupons === 1 ? 'cupón disponible' : 'cupones disponibles'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {client.coupons > 0 
+                        ? 'Puedes canjear un servicio gratis en tu próxima visita'
+                        : 'Completa 5 sellos para obtener un cupón'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Active Appointments */}
             {appointments.length > 0 && (

@@ -13,10 +13,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { QRCodeSVG } from 'qrcode.react'
-import { QrCode, Heart, User, Search, Copy, Check, Gift } from 'lucide-react'
-import type { LoyaltyClient, Sale, SaleItem } from '@/lib/types/database'
+import { QrCode, Heart, User, Search, Copy, Check, Gift, Settings } from 'lucide-react'
+import type { LoyaltyClient, Sale, SaleItem, Service, Organization } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -33,6 +41,9 @@ export default function LoyaltyPage() {
   const [selectedClient, setSelectedClient] = useState<LoyaltyClient | null>(null)
   const [clientSheetOpen, setClientSheetOpen] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
+  const [configModalOpen, setConfigModalOpen] = useState(false)
+  const [selectedCouponService, setSelectedCouponService] = useState<string>('')
+  const [savingConfig, setSavingConfig] = useState(false)
   const [copied, setCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
 
@@ -77,6 +88,30 @@ export default function LoyaltyPage() {
     }
   )
 
+  const { data: organization, mutate: mutateOrg } = useSWR<Organization>(
+    profile?.organization_id ? 'org-config' : null,
+    async () => {
+      const { data } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', profile!.organization_id)
+        .single()
+      return data
+    }
+  )
+
+  const { data: services } = useSWR<Service[]>(
+    profile?.organization_id ? 'loyalty-services' : null,
+    async () => {
+      const { data } = await supabase
+        .from('services')
+        .select('*')
+        .eq('organization_id', profile!.organization_id)
+        .order('name')
+      return data || []
+    }
+  )
+
   const filteredClients = clients?.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase())
   ) || []
@@ -117,6 +152,25 @@ export default function LoyaltyPage() {
     setClientSheetOpen(true)
   }
 
+  function openConfigModal() {
+    setSelectedCouponService(organization?.coupon_service_id || '')
+    setConfigModalOpen(true)
+  }
+
+  async function saveConfig() {
+    if (!profile?.organization_id) return
+    setSavingConfig(true)
+    
+    await supabase
+      .from('organizations')
+      .update({ coupon_service_id: selectedCouponService || null })
+      .eq('id', profile.organization_id)
+    
+    mutateOrg()
+    setSavingConfig(false)
+    setConfigModalOpen(false)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -125,10 +179,16 @@ export default function LoyaltyPage() {
           <p className="text-muted-foreground">Gestiona tus clientes leales</p>
         </div>
         {isAdmin && (
-          <Button onClick={generateQR} disabled={generating}>
-            <QrCode className="h-4 w-4 mr-2" />
-            {generating ? 'Generando...' : 'Generar código QR'}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={openConfigModal}>
+              <Settings className="h-4 w-4 mr-2" />
+              Configurar
+            </Button>
+            <Button onClick={generateQR} disabled={generating}>
+              <QrCode className="h-4 w-4 mr-2" />
+              {generating ? 'Generando...' : 'Generar código QR'}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -312,6 +372,39 @@ export default function LoyaltyPage() {
               </div>
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Config Modal */}
+      <Sheet open={configModalOpen} onOpenChange={setConfigModalOpen}>
+        <SheetContent className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Configuración de cupones</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-6 py-6">
+            <div className="space-y-2">
+              <Label>Servicio del cupón</Label>
+              <p className="text-sm text-muted-foreground">
+                Selecciona el servicio que será gratuito cuando un cliente acumule un cupón (al completar 5 sellos).
+              </p>
+              <Select value={selectedCouponService} onValueChange={setSelectedCouponService}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar servicio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {services?.map((service) => (
+                    <SelectItem key={service.id} value={service.id}>
+                      {service.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Button onClick={saveConfig} disabled={savingConfig} className="w-full">
+              {savingConfig ? 'Guardando...' : 'Guardar configuración'}
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
     </div>

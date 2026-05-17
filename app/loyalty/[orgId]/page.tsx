@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Scissors, Heart, Gift, ArrowLeft } from 'lucide-react'
-import type { Organization, LoyaltyClient, Sale, SaleItem, LoyaltyCoupon } from '@/lib/types/database'
+import type { Organization, LoyaltyClient, Sale, SaleItem } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -24,7 +24,6 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [client, setClient] = useState<LoyaltyClient | null>(null)
   const [history, setHistory] = useState<(Sale & { items: SaleItem[] })[]>([])
-  const [coupons, setCoupons] = useState<LoyaltyCoupon[]>([])
   const [clientName, setClientName] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -88,7 +87,6 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
     if (existingClient) {
       setClient(existingClient)
       loadHistory(existingClient.id)
-      loadCoupons(existingClient.id)
     } else {
       // Create new client
       const { data: newClient, error: createError } = await supabase
@@ -121,20 +119,9 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
     setHistory(historyData || [])
   }
 
-  async function loadCoupons(clientId: string) {
-    const { data: couponsData } = await supabase
-      .from('loyalty_coupons')
-      .select('*')
-      .eq('client_id', clientId)
-      .eq('status', 'disponible')
-    
-    setCoupons(couponsData || [])
-  }
-
   function logout() {
     setClient(null)
     setHistory([])
-    setCoupons([])
     setClientName('')
   }
 
@@ -294,28 +281,25 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         </Card>
 
         {/* Available Coupons */}
-        {coupons.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Gift className="h-5 w-5 text-green-600" />
-                Available Free Services
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {coupons.map((coupon) => (
-                <div key={coupon.id} className="p-4 bg-green-50 dark:bg-green-900/10 border-l-4 border-l-green-600 rounded">
-                  <p className="font-semibold text-green-700 dark:text-green-400">
-                    {coupon.description}
-                  </p>
-                  <p className="text-sm text-green-600 dark:text-green-500 mt-1">
-                    Valid from {new Date(coupon.created_at).toLocaleDateString('es-PE')}
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-full ${client.coupons > 0 ? 'bg-green-100' : 'bg-muted'}`}>
+                <Gift className={`h-6 w-6 ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`} />
+              </div>
+              <div>
+                <p className={`text-xl font-bold ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                  {client.coupons} {client.coupons === 1 ? 'cupón disponible' : 'cupones disponibles'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {client.coupons > 0 
+                    ? 'Puedes canjear un servicio gratis en tu próxima visita'
+                    : 'Completa 5 sellos para obtener un cupón'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Service History */}
         <Card>
