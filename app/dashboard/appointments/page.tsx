@@ -66,12 +66,13 @@ export default function AppointmentsPage() {
   const { data: appointments, mutate: mutateAppointments } = useSWR<(Appointment & { 
     service: Service | null
     employee: Profile | null
+    client?: any
   })[]>(
     profile?.organization_id ? `appointments-${statusFilter}-${search}` : null,
     async () => {
       let query = supabase
         .from('appointments')
-        .select('*, service:services(*), employee:profiles(*)')
+        .select('*, service:services(*), employee:profiles(*), client:loyalty_clients(*)')
         .eq('organization_id', profile!.organization_id)
         .order('appointment_time', { ascending: true })
 
@@ -243,6 +244,16 @@ export default function AppointmentsPage() {
                   </CardHeader>
 
                   <CardContent className="flex-1 space-y-3">
+                    {/* Client Name */}
+                    {apt.client && (
+                      <div className="flex gap-3">
+                        <Heart className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                        <div className="text-sm">
+                          <p className="font-medium">{apt.client.name}</p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Date and Time */}
                     <div className="flex gap-3">
                       <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
