@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
+import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check } from 'lucide-react'
 import type { Appointment, Service, Profile } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
@@ -49,11 +50,18 @@ function formatTime(dateStr: string) {
 }
 
 export default function AppointmentsPage() {
-  const { profile } = useAuth()
+  const { profile, isAdmin } = useAuth()
   const supabase = createClient()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [qrModalOpen, setQrModalOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  const bookingUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/reservar/${profile?.organization_id}` 
+    : ''
 
   const { data: appointments, mutate: mutateAppointments } = useSWR<(Appointment & { 
     service: Service | null
@@ -102,6 +110,45 @@ export default function AppointmentsPage() {
     mutateAppointments()
   }
 
+  async function generateQR() {
+    if (!profile?.organization_id) return
+    setGenerating(true)
+    
+    const qrValue = bookingUrl
+    
+    if (await checkIfQrExists()) {
+      await supabase
+        .from('organization_qr_codes')
+        .update({ qr_code: qrValue })
+        .eq('organization_id', profile.organization_id)
+    } else {
+      await supabase
+        .from('organization_qr_codes')
+        .insert({
+          organization_id: profile.organization_id,
+          qr_code: qrValue,
+        })
+    }
+    
+    setGenerating(false)
+    setQrModalOpen(true)
+  }
+
+  async function checkIfQrExists() {
+    const { data } = await supabase
+      .from('organization_qr_codes')
+      .select('id')
+      .eq('organization_id', profile!.organization_id)
+      .single()
+    return !!data
+  }
+
+  async function copyLink() {
+    await navigator.clipboard.writeText(bookingUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
     pendiente: { label: 'Pendiente', icon: AlertCircle, color: 'bg-yellow-100 text-yellow-800' },
     confirmada: { label: 'Confirmada', icon: CheckCircle, color: 'bg-blue-100 text-blue-800' },
@@ -111,10 +158,47 @@ export default function AppointmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Citas</h1>
-        <p className="text-muted-foreground">Gestiona las citas de tus clientes</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Citas</h1>
+          <p className="text-muted-foreground">Gestiona las citas de tus clientes</p>
+        </div>
+        {isAdmin && (
+          <Button onClick={generateQR} disabled={generating}>
+            <QrCode className="h-4 w-4 mr-2" />
+            {generating ? 'Generando...' : 'Generar código QR'}
+          </Button>
+        )}
       </div>
+
+      {/* QR Code Display */}
+      {qrModalOpen && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              Código QR de citas
+            </CardTitle>
+            <CardDescription>
+              Los clientes pueden escanear este código para agendar una cita
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4">
+            <div className="p-4 bg-white rounded-lg">
+              <QRCodeSVG value={bookingUrl} size={200} />
+            </div>
+            <div className="flex items-center gap-2 w-full max-w-md">
+              <Input value={bookingUrl} readOnly className="text-sm" />
+              <Button variant="outline" size="icon" onClick={copyLink}>
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <Button variant="outline" onClick={() => setQrModalOpen(false)}>
+              Cerrar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
