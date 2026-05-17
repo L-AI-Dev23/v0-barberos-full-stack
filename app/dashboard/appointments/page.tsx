@@ -1,0 +1,256 @@
+'use client'
+
+import { useState } from 'react'
+import useSWR from 'swr'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/context/auth-context'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import type { Appointment, Service, Profile } from '@/lib/types/database'
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+  }).format(amount)
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('es-PE', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString('es-PE', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+export default function AppointmentsPage() {
+  const { profile } = useAuth()
+  const supabase = createClient()
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [search, setSearch] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
+  const { data: appointments, mutate: mutateAppointments } = useSWR<(Appointment & { 
+    service: Service | null
+    employee: Profile | null
+  })[]>(
+    profile?.organization_id ? `appointments-${statusFilter}-${search}` : null,
+    async () => {
+      let query = supabase
+        .from('appointments')
+        .select('*, service:services(*), employee:profiles(*)')
+        .eq('organization_id', profile!.organization_id)
+        .order('appointment_time', { ascending: true })
+
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter)
+      }
+
+      const { data } = await query
+      
+      if (search) {
+        return (data || []).filter(apt => 
+          apt.service?.name.toLowerCase().includes(search.toLowerCase())
+        )
+      }
+      
+      return data || []
+    }
+  )
+
+  async function updateStatus(appointmentId: string, newStatus: string) {
+    await supabase
+      .from('appointments')
+      .update({ status: newStatus })
+      .eq('id', appointmentId)
+    
+    mutateAppointments()
+  }
+
+  async function deleteAppointment(appointmentId: string) {
+    await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', appointmentId)
+    
+    setDeleteConfirm(null)
+    mutateAppointments()
+  }
+
+  const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
+    pendiente: { label: 'Pendiente', icon: AlertCircle, color: 'bg-yellow-100 text-yellow-800' },
+    confirmada: { label: 'Confirmada', icon: CheckCircle, color: 'bg-blue-100 text-blue-800' },
+    completada: { label: 'Completada', icon: CheckCircle, color: 'bg-green-100 text-green-800' },
+    cancelada: { label: 'Cancelada', icon: XCircle, color: 'bg-red-100 text-red-800' },
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Citas</h1>
+        <p className="text-muted-foreground">Gestiona las citas de tus clientes</p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <Input
+          placeholder="Buscar por servicio..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1"
+        />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full md:w-48">
+            <SelectValue placeholder="Filtrar por estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="pendiente">Pendiente</SelectItem>
+            <SelectItem value="confirmada">Confirmada</SelectItem>
+            <SelectItem value="completada">Completada</SelectItem>
+            <SelectItem value="cancelada">Cancelada</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Appointments List */}
+      <ScrollArea className="h-auto md:h-[calc(100vh-18rem)]">
+        <div className="grid gap-4 md:grid-cols-2 pr-4">
+          {appointments && appointments.length > 0 ? (
+            appointments.map((apt) => {
+              const config = statusConfig[apt.status]
+              return (
+                <Card key={apt.id} className="flex flex-col">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{apt.service?.name}</CardTitle>
+                        <CardDescription>{apt.service?.description}</CardDescription>
+                      </div>
+                      <Badge className={config.color}>
+                        {config.label}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="flex-1 space-y-3">
+                    {/* Date and Time */}
+                    <div className="flex gap-3">
+                      <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                      <div className="text-sm">
+                        <p className="font-medium">{formatDate(apt.appointment_time)}</p>
+                        <p className="text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {formatTime(apt.appointment_time)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Employee */}
+                    {apt.employee && (
+                      <div className="flex gap-3">
+                        <User className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                        <div className="text-sm">
+                          <p className="font-medium">{apt.employee.full_name}</p>
+                          <p className="text-muted-foreground">{apt.employee.email}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {apt.notes && (
+                      <div className="text-sm p-2 bg-muted rounded">
+                        <p className="text-muted-foreground">{apt.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Service Price */}
+                    <div className="pt-2 border-t">
+                      <p className="text-lg font-bold">{formatCurrency(apt.service?.cost || 0)}</p>
+                    </div>
+                  </CardContent>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 p-4 border-t">
+                    <Select value={apt.status} onValueChange={(newStatus) => updateStatus(apt.id, newStatus)}>
+                      <SelectTrigger className="flex-1 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                        <SelectItem value="confirmada">Confirmada</SelectItem>
+                        <SelectItem value="completada">Completada</SelectItem>
+                        <SelectItem value="cancelada">Cancelada</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => setDeleteConfirm(apt.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      {deleteConfirm === apt.id && (
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Eliminar cita</DialogTitle>
+                          </DialogHeader>
+                          <p className="text-muted-foreground">¿Estás seguro de que deseas eliminar esta cita? Esta acción no se puede deshacer.</p>
+                          <div className="flex gap-3 justify-end">
+                            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+                              Cancelar
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              onClick={() => deleteAppointment(apt.id)}
+                            >
+                              Eliminar
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      )}
+                    </Dialog>
+                  </div>
+                </Card>
+              )
+            })
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No hay citas registradas</p>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+}
