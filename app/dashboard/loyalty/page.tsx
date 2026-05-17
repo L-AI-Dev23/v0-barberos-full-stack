@@ -1,174 +1,200 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import useSWR from 'swr'
-import { createClient } from '@/lib/supabase/client'
-import { useAuth } from '@/lib/context/auth-context'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useState } from "react";
+import useSWR from "swr";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/context/auth-context";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet'
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { QRCodeSVG } from 'qrcode.react'
-import { QrCode, Heart, User, Search, Copy, Check, Gift, Settings } from 'lucide-react'
-import type { LoyaltyClient, Sale, SaleItem, Service, Organization } from '@/lib/types/database'
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { QRCodeSVG } from "qrcode.react";
+import {
+  QrCode,
+  Heart,
+  User,
+  Search,
+  Copy,
+  Check,
+  Gift,
+  Settings,
+} from "lucide-react";
+import type {
+  LoyaltyClient,
+  Sale,
+  SaleItem,
+  Service,
+  Organization,
+} from "@/lib/types/database";
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('es-PE', {
-    style: 'currency',
-    currency: 'PEN',
-  }).format(amount)
+  return new Intl.NumberFormat("es-PE", {
+    style: "currency",
+    currency: "PEN",
+  }).format(amount);
 }
 
 export default function LoyaltyPage() {
-  const { profile, isAdmin } = useAuth()
-  const supabase = createClient()
-  
-  const [search, setSearch] = useState('')
-  const [selectedClient, setSelectedClient] = useState<LoyaltyClient | null>(null)
-  const [clientSheetOpen, setClientSheetOpen] = useState(false)
-  const [qrModalOpen, setQrModalOpen] = useState(false)
-  const [configModalOpen, setConfigModalOpen] = useState(false)
-  const [selectedCouponService, setSelectedCouponService] = useState<string>('')
-  const [savingConfig, setSavingConfig] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [generating, setGenerating] = useState(false)
+  const { profile, isAdmin } = useAuth();
+  const supabase = createClient();
 
-  const loyaltyUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/loyalty/${profile?.organization_id}` 
-    : ''
+  const [search, setSearch] = useState("");
+  const [selectedClient, setSelectedClient] = useState<LoyaltyClient | null>(
+    null,
+  );
+  const [clientSheetOpen, setClientSheetOpen] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [selectedCouponService, setSelectedCouponService] =
+    useState<string>("");
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const loyaltyUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/loyalty/${profile?.organization_id}`
+      : "";
 
   const { data: clients, mutate: mutateClients } = useSWR<LoyaltyClient[]>(
-    profile?.organization_id ? 'loyalty-clients' : null,
+    profile?.organization_id ? "loyalty-clients" : null,
     async () => {
       const { data } = await supabase
-        .from('loyalty_clients')
-        .select('*')
-        .eq('organization_id', profile!.organization_id)
-        .order('name')
-      return data || []
-    }
-  )
+        .from("loyalty_clients")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .order("name");
+      return data || [];
+    },
+  );
 
   const { data: qrCode, mutate: mutateQr } = useSWR(
-    profile?.organization_id && isAdmin ? 'org-qr' : null,
+    profile?.organization_id && isAdmin ? "org-qr" : null,
     async () => {
       const { data } = await supabase
-        .from('organization_qr_codes')
-        .select('*')
-        .eq('organization_id', profile!.organization_id)
-        .single()
-      return data
-    }
-  )
+        .from("organization_qr_codes")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .single();
+      return data;
+    },
+  );
 
   const { data: clientHistory } = useSWR<(Sale & { items: SaleItem[] })[]>(
     selectedClient ? `client-history-${selectedClient.id}` : null,
     async () => {
       const { data } = await supabase
-        .from('sales')
-        .select('*, items:sale_items(*, service:services(*), product:products(*))')
-        .eq('client_id', selectedClient!.id)
-        .order('created_at', { ascending: false })
-        .limit(50)
-      return data || []
-    }
-  )
+        .from("sales")
+        .select(
+          "*, items:sale_items(*, service:services(*), product:products(*))",
+        )
+        .eq("client_id", selectedClient!.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+  );
 
   const { data: organization, mutate: mutateOrg } = useSWR<Organization>(
-    profile?.organization_id ? 'org-config' : null,
+    profile?.organization_id ? "org-config" : null,
     async () => {
       const { data } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', profile!.organization_id)
-        .single()
-      return data
-    }
-  )
+        .from("organizations")
+        .select("*")
+        .eq("id", profile!.organization_id)
+        .single();
+      return data;
+    },
+  );
 
   const { data: services } = useSWR<Service[]>(
-    profile?.organization_id ? 'loyalty-services' : null,
+    profile?.organization_id ? "loyalty-services" : null,
     async () => {
       const { data } = await supabase
-        .from('services')
-        .select('*')
-        .eq('organization_id', profile!.organization_id)
-        .order('name')
-      return data || []
-    }
-  )
+        .from("services")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .order("name");
+      return data || [];
+    },
+  );
 
-  const filteredClients = clients?.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase())
-  ) || []
+  const filteredClients =
+    clients?.filter((c) =>
+      c.name.toLowerCase().includes(search.toLowerCase()),
+    ) || [];
 
   async function generateQR() {
-    if (!profile?.organization_id) return
-    setGenerating(true)
-    
-    const qrValue = loyaltyUrl
-    
+    if (!profile?.organization_id) return;
+    setGenerating(true);
+
+    const qrValue = loyaltyUrl;
+
     if (qrCode) {
       await supabase
-        .from('organization_qr_codes')
+        .from("organization_qr_codes")
         .update({ qr_code: qrValue })
-        .eq('organization_id', profile.organization_id)
+        .eq("organization_id", profile.organization_id);
     } else {
-      await supabase
-        .from('organization_qr_codes')
-        .insert({
-          organization_id: profile.organization_id,
-          qr_code: qrValue,
-        })
+      await supabase.from("organization_qr_codes").insert({
+        organization_id: profile.organization_id,
+        qr_code: qrValue,
+      });
     }
-    
-    mutateQr()
-    setGenerating(false)
-    setQrModalOpen(true)
+
+    mutateQr();
+    setGenerating(false);
+    setQrModalOpen(true);
   }
 
   async function copyLink() {
-    await navigator.clipboard.writeText(loyaltyUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    await navigator.clipboard.writeText(loyaltyUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   function openClientSheet(client: LoyaltyClient) {
-    setSelectedClient(client)
-    setClientSheetOpen(true)
+    setSelectedClient(client);
+    setClientSheetOpen(true);
   }
 
   function openConfigModal() {
-    setSelectedCouponService(organization?.coupon_service_id || '')
-    setConfigModalOpen(true)
+    setSelectedCouponService(organization?.coupon_service_id || "");
+    setConfigModalOpen(true);
   }
 
   async function saveConfig() {
-    if (!profile?.organization_id) return
-    setSavingConfig(true)
-    
+    if (!profile?.organization_id) return;
+    setSavingConfig(true);
+
     await supabase
-      .from('organizations')
+      .from("organizations")
       .update({ coupon_service_id: selectedCouponService || null })
-      .eq('id', profile.organization_id)
-    
-    mutateOrg()
-    setSavingConfig(false)
-    setConfigModalOpen(false)
+      .eq("id", profile.organization_id);
+
+    mutateOrg();
+    setSavingConfig(false);
+    setConfigModalOpen(false);
   }
 
   return (
@@ -186,7 +212,7 @@ export default function LoyaltyPage() {
             </Button>
             <Button onClick={generateQR} disabled={generating}>
               <QrCode className="h-4 w-4 mr-2" />
-              {generating ? 'Generando...' : 'Generar código QR'}
+              {generating ? "Generando..." : "Generar código QR"}
             </Button>
           </div>
         )}
@@ -201,7 +227,8 @@ export default function LoyaltyPage() {
               Código QR de fidelidad
             </CardTitle>
             <CardDescription>
-              Los clientes pueden escanear este código para acceder a su tarjeta de fidelidad
+              Los clientes pueden escanear este código para acceder a su tarjeta
+              de fidelidad
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
@@ -211,7 +238,11 @@ export default function LoyaltyPage() {
             <div className="flex items-center gap-2 w-full max-w-md">
               <Input value={loyaltyUrl} readOnly className="text-sm" />
               <Button variant="outline" size="icon" onClick={copyLink}>
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
             <Button variant="outline" onClick={() => setQrModalOpen(false)}>
@@ -248,15 +279,18 @@ export default function LoyaltyPage() {
                 <div className="flex-1">
                   <p className="font-medium">{client.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    Miembro desde {new Date(client.created_at).toLocaleDateString('es-PE')}
+                    Miembro desde{" "}
+                    {new Date(client.created_at).toLocaleDateString("es-PE")}
                   </p>
                 </div>
               </div>
-              
+
               {/* Loyalty Card Preview */}
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Progreso de fidelidad</span>
+                  <span className="text-sm font-medium">
+                    Progreso de fidelidad
+                  </span>
                   <span className="text-sm">{client.stamps}/5</span>
                 </div>
                 <div className="flex gap-1">
@@ -264,7 +298,7 @@ export default function LoyaltyPage() {
                     <div
                       key={i}
                       className={`flex-1 h-8 rounded flex items-center justify-center ${
-                        i < client.stamps ? 'bg-primary' : 'bg-muted'
+                        i < client.stamps ? "bg-primary" : "bg-muted"
                       }`}
                     >
                       {i < client.stamps ? (
@@ -275,10 +309,13 @@ export default function LoyaltyPage() {
                     </div>
                   ))}
                 </div>
-                {client.stamps >= 5 && (
-                  <div className="mt-2 flex items-center gap-1 text-sm text-green-600">
+                {client.coupons > 0 && (
+                  <div className="mt-2 flex items-center gap-1 text-sm text-green-600 font-medium">
                     <Gift className="h-4 w-4" />
-                    ¡Servicio gratuito disponible!
+                    {client.coupons}{" "}
+                    {client.coupons === 1
+                      ? "cupón disponible"
+                      : "cupones disponibles"}
                   </div>
                 )}
               </div>
@@ -289,7 +326,11 @@ export default function LoyaltyPage() {
 
       {filteredClients.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{search ? 'No se encontraron clientes que coincidan con tu búsqueda.' : 'Sin clientes de fidelidad aún.'}</p>
+          <p>
+            {search
+              ? "No se encontraron clientes que coincidan con tu búsqueda."
+              : "Sin clientes de fidelidad aún."}
+          </p>
         </div>
       )}
 
@@ -307,7 +348,7 @@ export default function LoyaltyPage() {
                   <div className="text-center mb-4">
                     <h3 className="font-semibold">Tarjeta de fidelidad</h3>
                     <p className="text-sm text-muted-foreground">
-                      {selectedClient.stamps}/5 stamps collected
+                      {selectedClient.stamps}/5 sellos recolectados
                     </p>
                   </div>
                   <div className="flex gap-2 justify-center">
@@ -315,7 +356,7 @@ export default function LoyaltyPage() {
                       <div
                         key={i}
                         className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                          i < selectedClient.stamps ? 'bg-primary' : 'bg-muted'
+                          i < selectedClient.stamps ? "bg-primary" : "bg-muted"
                         }`}
                       >
                         {i < selectedClient.stamps ? (
@@ -326,11 +367,14 @@ export default function LoyaltyPage() {
                       </div>
                     ))}
                   </div>
-                  {selectedClient.stamps >= 5 && (
+                  {selectedClient.coupons > 0 && (
                     <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/20 rounded-lg text-center">
                       <Gift className="h-5 w-5 text-green-600 mx-auto mb-1" />
                       <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                        Free service available!
+                        {selectedClient.coupons}{" "}
+                        {selectedClient.coupons === 1
+                          ? "cupón disponible"
+                          : "cupones disponibles"}
                       </p>
                     </div>
                   )}
@@ -339,7 +383,7 @@ export default function LoyaltyPage() {
 
               {/* Purchase History */}
               <div>
-                <h3 className="font-semibold mb-3">Purchase History</h3>
+                <h3 className="font-semibold mb-3">Historial de compras</h3>
                 <ScrollArea className="h-[300px]">
                   {clientHistory && clientHistory.length > 0 ? (
                     <div className="space-y-3 pr-4">
@@ -350,12 +394,15 @@ export default function LoyaltyPage() {
                               <p className="text-sm text-muted-foreground">
                                 {new Date(sale.created_at).toLocaleDateString()}
                               </p>
-                              <p className="font-medium">{formatCurrency(sale.total)}</p>
+                              <p className="font-medium">
+                                {formatCurrency(sale.total)}
+                              </p>
                             </div>
                             <div className="space-y-1">
                               {sale.items?.map((item) => (
                                 <p key={item.id} className="text-sm">
-                                  {item.quantity}x {item.service?.name || item.product?.name}
+                                  {item.quantity}x{" "}
+                                  {item.service?.name || item.product?.name}
                                 </p>
                               ))}
                             </div>
@@ -365,7 +412,7 @@ export default function LoyaltyPage() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">
-                      No purchase history yet
+                      Sin historial de compras
                     </p>
                   )}
                 </ScrollArea>
@@ -385,9 +432,13 @@ export default function LoyaltyPage() {
             <div className="space-y-2">
               <Label>Servicio del cupón</Label>
               <p className="text-sm text-muted-foreground">
-                Selecciona el servicio que será gratuito cuando un cliente acumule un cupón (al completar 5 sellos).
+                Selecciona el servicio que será gratuito cuando un cliente
+                acumule un cupón (al completar 5 sellos).
               </p>
-              <Select value={selectedCouponService} onValueChange={setSelectedCouponService}>
+              <Select
+                value={selectedCouponService}
+                onValueChange={setSelectedCouponService}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar servicio" />
                 </SelectTrigger>
@@ -400,13 +451,17 @@ export default function LoyaltyPage() {
                 </SelectContent>
               </Select>
             </div>
-            
-            <Button onClick={saveConfig} disabled={savingConfig} className="w-full">
-              {savingConfig ? 'Guardando...' : 'Guardar configuración'}
+
+            <Button
+              onClick={saveConfig}
+              disabled={savingConfig}
+              className="w-full"
+            >
+              {savingConfig ? "Guardando..." : "Guardar configuración"}
             </Button>
           </div>
         </SheetContent>
       </Sheet>
     </div>
-  )
+  );
 }

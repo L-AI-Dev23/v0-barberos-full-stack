@@ -1,208 +1,252 @@
-'use client'
+"use client";
 
-import { useState, useMemo } from 'react'
-import useSWR from 'swr'
-import { createClient } from '@/lib/supabase/client'
-import { useAuth } from '@/lib/context/auth-context'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { useState, useMemo } from "react";
+import useSWR from "swr";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/context/auth-context";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Search, Plus, Minus, Trash2, User, ShoppingCart, Check } from 'lucide-react'
-import type { Service, Product, LoyaltyClient, Profile, CartItem, ServiceCategory, ProductCategory, Organization } from '@/lib/types/database'
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  User,
+  ShoppingCart,
+  Check,
+} from "lucide-react";
+import type {
+  Service,
+  Product,
+  LoyaltyClient,
+  Profile,
+  CartItem,
+  ServiceCategory,
+  ProductCategory,
+  Organization,
+} from "@/lib/types/database";
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('es-PE', {
-    style: 'currency',
-    currency: 'PEN',
-  }).format(amount)
+  return new Intl.NumberFormat("es-PE", {
+    style: "currency",
+    currency: "PEN",
+  }).format(amount);
 }
 
 export default function POSPage() {
-  const { profile, isAdmin } = useAuth()
-  const supabase = createClient()
-  
-  const [mode, setMode] = useState<'services' | 'products'>('services')
-  const [search, setSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [selectedClient, setSelectedClient] = useState<string>('')
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('')
-  const [applyCoupon, setApplyCoupon] = useState(false)
-  const [processing, setProcessing] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const { profile, isAdmin } = useAuth();
+  const supabase = createClient();
+
+  const [mode, setMode] = useState<"services" | "products">("services");
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedClient, setSelectedClient] = useState<string>("");
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("");
+  const [applyCoupon, setApplyCoupon] = useState<boolean>(false);
+  const [processing, setProcessing] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   // Fetch data
   const { data: services } = useSWR<Service[]>(
-    profile?.organization_id ? 'pos-services' : null,
+    profile?.organization_id ? "pos-services" : null,
     async () => {
       const { data } = await supabase
-        .from('services')
-        .select('*, category:service_categories(*)')
-        .eq('organization_id', profile!.organization_id)
-        .order('name')
-      return data || []
-    }
-  )
+        .from("services")
+        .select("*, category:service_categories(*)")
+        .eq("organization_id", profile!.organization_id)
+        .order("name");
+      return data || [];
+    },
+  );
 
   const { data: products } = useSWR<Product[]>(
-    profile?.organization_id ? 'pos-products' : null,
+    profile?.organization_id ? "pos-products" : null,
     async () => {
       const { data } = await supabase
-        .from('products')
-        .select('*, category:product_categories(*)')
-        .eq('organization_id', profile!.organization_id)
-        .order('name')
-      return data || []
-    }
-  )
+        .from("products")
+        .select("*, category:product_categories(*)")
+        .eq("organization_id", profile!.organization_id)
+        .order("name");
+      return data || [];
+    },
+  );
 
   const { data: serviceCategories } = useSWR<ServiceCategory[]>(
-    profile?.organization_id ? 'pos-service-categories' : null,
+    profile?.organization_id ? "pos-service-categories" : null,
     async () => {
       const { data } = await supabase
-        .from('service_categories')
-        .select('*')
-        .eq('organization_id', profile!.organization_id)
-        .order('name')
-      return data || []
-    }
-  )
+        .from("service_categories")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .order("name");
+      return data || [];
+    },
+  );
 
   const { data: productCategories } = useSWR<ProductCategory[]>(
-    profile?.organization_id ? 'pos-product-categories' : null,
+    profile?.organization_id ? "pos-product-categories" : null,
     async () => {
       const { data } = await supabase
-        .from('product_categories')
-        .select('*')
-        .eq('organization_id', profile!.organization_id)
-        .order('name')
-      return data || []
-    }
-  )
+        .from("product_categories")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .order("name");
+      return data || [];
+    },
+  );
 
   const { data: clients } = useSWR<LoyaltyClient[]>(
-    profile?.organization_id ? 'pos-clients' : null,
+    profile?.organization_id ? "pos-clients" : null,
     async () => {
       const { data } = await supabase
-        .from('loyalty_clients')
-        .select('*')
-        .eq('organization_id', profile!.organization_id)
-        .order('name')
-      return data || []
-    }
-  )
+        .from("loyalty_clients")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .order("name");
+      return data || [];
+    },
+  );
 
   const { data: employees } = useSWR<Profile[]>(
-    profile?.organization_id ? 'pos-employees' : null,
+    profile?.organization_id ? "pos-employees" : null,
     async () => {
       const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('organization_id', profile!.organization_id)
-        .order('full_name')
-      return data || []
-    }
-  )
+        .from("profiles")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .order("full_name");
+      return data || [];
+    },
+  );
 
   const { data: organization } = useSWR<Organization>(
-    profile?.organization_id ? 'pos-org' : null,
+    profile?.organization_id ? "pos-org" : null,
     async () => {
       const { data } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', profile!.organization_id)
-        .single()
-      return data
-    }
-  )
+        .from("organizations")
+        .select("*")
+        .eq("id", profile!.organization_id)
+        .single();
+      return data;
+    },
+  );
 
   // Set default employee for non-admin users
   useState(() => {
     if (!isAdmin && profile) {
-      setSelectedEmployee(profile.id)
+      setSelectedEmployee(profile.id);
     }
-  })
+  });
 
-  const categories = mode === 'services' ? serviceCategories : productCategories
-  const items = mode === 'services' ? services : products
+  const categories =
+    mode === "services" ? serviceCategories : productCategories;
+  const items = mode === "services" ? services : products;
 
   const filteredItems = useMemo(() => {
-    if (!items) return []
-    return items.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase())
-      const matchesCategory = !selectedCategory || item.category_id === selectedCategory
-      return matchesSearch && matchesCategory
-    })
-  }, [items, search, selectedCategory])
+    if (!items) return [];
+    return items.filter((item) => {
+      const matchesSearch = item.name
+        .toLowerCase()
+        .includes(search.toLowerCase());
+      const matchesCategory =
+        !selectedCategory || item.category_id === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [items, search, selectedCategory]);
 
   // Get selected client coupons
-  const selectedClientData = clients?.find(c => c.id === selectedClient)
-  const clientCoupons = selectedClientData?.coupons || 0
-  
+  const selectedClientData = clients?.find((c) => c.id === selectedClient);
+  const clientCoupons = selectedClientData?.coupons || 0;
+
   // Calculate discount based on configured service
-  const couponServiceId = organization?.coupon_service_id
-  const couponServiceItem = cart.find(item => item.id === couponServiceId && item.type === 'service')
-  const discount = applyCoupon && couponServiceItem ? couponServiceItem.price : 0
+  const couponServiceId = organization?.coupon_service_id;
+  const couponServiceItem = cart.find(
+    (item) => item.id === couponServiceId && item.type === "service",
+  );
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const total = cartTotal - discount
-  const totalCommission = cart.reduce((sum, item) => sum + item.commission * item.quantity, 0)
+  // If we applied coupon but we removed the service, untoggle the coupon
+  if (applyCoupon && !couponServiceItem) {
+    setApplyCoupon(false);
+  }
 
-  function addToCart(item: Service | Product, type: 'service' | 'product') {
-    const existingIndex = cart.findIndex(c => c.id === item.id && c.type === type)
-    
+  const discount =
+    applyCoupon && couponServiceItem ? couponServiceItem.price : 0;
+
+  const cartTotal = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
+  );
+  const total = cartTotal - discount;
+  const totalCommission = cart.reduce(
+    (sum, item) => sum + item.commission * item.quantity,
+    0,
+  );
+
+  function addToCart(item: Service | Product, type: "service" | "product") {
+    const existingIndex = cart.findIndex(
+      (c) => c.id === item.id && c.type === type,
+    );
+
     if (existingIndex >= 0) {
-      const newCart = [...cart]
-      newCart[existingIndex].quantity++
-      setCart(newCart)
+      const newCart = [...cart];
+      newCart[existingIndex].quantity++;
+      setCart(newCart);
     } else {
       const cartItem: CartItem = {
         id: item.id,
         type,
         name: item.name,
-        price: type === 'service' ? (item as Service).cost : (item as Product).sale_price,
-        commission: type === 'service' ? (item as Service).commission : 0,
+        price:
+          type === "service"
+            ? (item as Service).cost
+            : (item as Product).sale_price,
+        commission: type === "service" ? (item as Service).commission : 0,
         quantity: 1,
-        ...(type === 'service' ? { service: item as Service } : { product: item as Product }),
-      }
-      setCart([...cart, cartItem])
+        ...(type === "service"
+          ? { service: item as Service }
+          : { product: item as Product }),
+      };
+      setCart([...cart, cartItem]);
     }
   }
 
   function updateQuantity(index: number, delta: number) {
-    const newCart = [...cart]
-    newCart[index].quantity += delta
+    const newCart = [...cart];
+    newCart[index].quantity += delta;
     if (newCart[index].quantity <= 0) {
-      newCart.splice(index, 1)
+      newCart.splice(index, 1);
     }
-    setCart(newCart)
+    setCart(newCart);
   }
 
   function removeItem(index: number) {
-    const newCart = [...cart]
-    newCart.splice(index, 1)
-    setCart(newCart)
+    const newCart = [...cart];
+    newCart.splice(index, 1);
+    setCart(newCart);
   }
 
   async function completeSale() {
-    if (!profile?.organization_id || !selectedEmployee || cart.length === 0) return
-    setProcessing(true)
+    if (!profile?.organization_id || !selectedEmployee || cart.length === 0)
+      return;
+    setProcessing(true);
 
     try {
       // Create sale
       const { data: sale, error: saleError } = await supabase
-        .from('sales')
+        .from("sales")
         .insert({
           organization_id: profile.organization_id,
           employee_id: selectedEmployee,
@@ -211,102 +255,86 @@ export default function POSPage() {
           total_commission: totalCommission,
         })
         .select()
-        .single()
+        .single();
 
-      if (saleError) throw saleError
+      if (saleError) throw saleError;
 
       // Create sale items
-      const saleItems = cart.map(item => ({
+      const saleItems = cart.map((item) => ({
         sale_id: sale.id,
         item_type: item.type,
-        service_id: item.type === 'service' ? item.id : null,
-        product_id: item.type === 'product' ? item.id : null,
+        service_id: item.type === "service" ? item.id : null,
+        product_id: item.type === "product" ? item.id : null,
         quantity: item.quantity,
         unit_price: item.price,
         commission: item.commission,
-      }))
+      }));
 
-      await supabase.from('sale_items').insert(saleItems)
+      await supabase.from("sale_items").insert(saleItems);
 
       // Update product stock
       for (const item of cart) {
-        if (item.type === 'product') {
-          await supabase.rpc('decrement_stock', {
-            product_id: item.id,
-            amount: item.quantity
-          }).catch(() => {
-            // If RPC doesn't exist, do it manually
-            supabase
-              .from('products')
-              .update({ stock: (item.product?.stock || 0) - item.quantity })
-              .eq('id', item.id)
-          })
+        if (item.type === "product") {
+          await supabase
+            .rpc("decrement_stock", {
+              product_id: item.id,
+              amount: item.quantity,
+            })
+            .catch(() => {
+              // If RPC doesn't exist, do it manually
+              supabase
+                .from("products")
+                .update({ stock: (item.product?.stock || 0) - item.quantity })
+                .eq("id", item.id);
+            });
         }
       }
 
       // Update loyalty stamps if client selected
       if (selectedClient) {
         const serviceCount = cart
-          .filter(item => item.type === 'service')
-          .reduce((sum, item) => sum + item.quantity, 0)
-        
-        if (serviceCount > 0) {
-          const client = clients?.find(c => c.id === selectedClient)
+          .filter((item) => item.type === "service")
+          .reduce((sum, item) => sum + item.quantity, 0);
+
+        if (serviceCount > 0 || applyCoupon) {
+          const client = clients?.find((c) => c.id === selectedClient);
           if (client) {
-            const totalStamps = client.stamps + serviceCount
-            
+            const totalStamps = client.stamps + serviceCount;
+            let additionalCoupons = 0;
+            let finalStamps = totalStamps;
+
             // If stamps >= 5, create coupon and reset
             if (totalStamps >= 5) {
-              await supabase
-                .from('loyalty_coupons')
-                .insert({
-                  organization_id: profile.organization_id,
-                  client_id: selectedClient,
-                  description: 'Corte gratis',
-                  status: 'disponible'
-                })
-              
-              // Reset stamps to remainder
-              await supabase
-                .from('loyalty_clients')
-                .update({ stamps: totalStamps % 5 })
-                .eq('id', selectedClient)
-            } else {
-              // Just update stamps
-              await supabase
-                .from('loyalty_clients')
-                .update({ stamps: totalStamps })
-                .eq('id', selectedClient)
+              additionalCoupons = Math.floor(totalStamps / 5);
+              finalStamps = totalStamps % 5;
             }
+
+            let finalCoupons = client.coupons + additionalCoupons;
+
+            if (applyCoupon) {
+              finalCoupons -= 1;
+            }
+
+            await supabase
+              .from("loyalty_clients")
+              .update({ stamps: finalStamps, coupons: finalCoupons })
+              .eq("id", selectedClient);
           }
         }
       }
 
-      // Mark coupon as used if selected
-      if (selectedCoupon) {
-        await supabase
-          .from('loyalty_coupons')
-          .update({ 
-            status: 'usado',
-            used_at: new Date().toISOString(),
-            sale_id: sale.id
-          })
-          .eq('id', selectedCoupon)
-      }
-
       // Reset cart
-      setCart([])
-      setSelectedClient('')
-      setSelectedCoupon('')
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
-
+      setCart([]);
+      setSelectedClient("");
+      setApplyCoupon(false);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      console.error('Error completing sale:', error)
-      alert('Error completing sale. Please try again.')
+      console.error("Error completing sale:", error);
+      alert("Error completing sale. Please try again.");
     }
 
-    setProcessing(false)
+    setProcessing(false);
   }
 
   return (
@@ -319,13 +347,20 @@ export default function POSPage() {
           </div>
 
           {/* Mode Toggle */}
-          <Tabs value={mode} onValueChange={(v) => {
-            setMode(v as 'services' | 'products')
-            setSelectedCategory(null)
-          }}>
+          <Tabs
+            value={mode}
+            onValueChange={(v) => {
+              setMode(v as "services" | "products");
+              setSelectedCategory(null);
+            }}
+          >
             <TabsList className="w-full">
-              <TabsTrigger value="services" className="flex-1">Servicios</TabsTrigger>
-              <TabsTrigger value="products" className="flex-1">Productos</TabsTrigger>
+              <TabsTrigger value="services" className="flex-1">
+                Servicios
+              </TabsTrigger>
+              <TabsTrigger value="products" className="flex-1">
+                Productos
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -344,7 +379,7 @@ export default function POSPage() {
           {categories && categories.length > 0 && (
             <div className="flex flex-wrap gap-2">
               <Badge
-                variant={selectedCategory === null ? 'default' : 'outline'}
+                variant={selectedCategory === null ? "default" : "outline"}
                 className="cursor-pointer"
                 onClick={() => setSelectedCategory(null)}
               >
@@ -353,7 +388,7 @@ export default function POSPage() {
               {categories.map((cat) => (
                 <Badge
                   key={cat.id}
-                  variant={selectedCategory === cat.id ? 'default' : 'outline'}
+                  variant={selectedCategory === cat.id ? "default" : "outline"}
                   className="cursor-pointer"
                   onClick={() => setSelectedCategory(cat.id)}
                 >
@@ -372,14 +407,20 @@ export default function POSPage() {
                 <Card
                   key={item.id}
                   className="cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => addToCart(item, mode === 'services' ? 'service' : 'product')}
+                  onClick={() =>
+                    addToCart(item, mode === "services" ? "service" : "product")
+                  }
                 >
                   <CardContent className="p-4">
                     <p className="font-medium truncate">{item.name}</p>
                     <p className="text-lg font-bold text-primary">
-                      {formatCurrency(mode === 'services' ? (item as Service).cost : (item as Product).sale_price)}
+                      {formatCurrency(
+                        mode === "services"
+                          ? (item as Service).cost
+                          : (item as Product).sale_price,
+                      )}
                     </p>
-                    {mode === 'products' && (
+                    {mode === "products" && (
                       <p className="text-xs text-muted-foreground">
                         Stock: {(item as Product).stock}
                       </p>
@@ -413,7 +454,10 @@ export default function POSPage() {
             ) : (
               <div className="space-y-3">
                 {cart.map((item, index) => (
-                  <div key={`${item.type}-${item.id}`} className="flex items-center gap-2">
+                  <div
+                    key={`${item.type}-${item.id}`}
+                    className="flex items-center gap-2"
+                  >
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{item.name}</p>
                       <p className="text-sm text-muted-foreground">
@@ -429,7 +473,9 @@ export default function POSPage() {
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-6 text-center text-sm">{item.quantity}</span>
+                      <span className="w-6 text-center text-sm">
+                        {item.quantity}
+                      </span>
                       <Button
                         variant="outline"
                         size="icon"
@@ -475,29 +521,37 @@ export default function POSPage() {
             </div>
 
             {/* Coupon Selector */}
-            {selectedClient && availableCoupons && availableCoupons.length > 0 && (
-              <div className="space-y-2">
-                <Label>Cupón</Label>
-                <Select value={selectedCoupon} onValueChange={setSelectedCoupon}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin cupón" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Sin cupón</SelectItem>
-                    {availableCoupons.map((coupon) => (
-                      <SelectItem key={coupon.id} value={coupon.id}>
-                        {coupon.description}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label>Cupón</Label>
+              <Select
+                value={applyCoupon ? "apply" : "none"}
+                onValueChange={(val) => setApplyCoupon(val === "apply")}
+                disabled={!selectedClient || clientCoupons <= 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin cupón" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {!selectedClient
+                      ? "Seleccione un cliente primero"
+                      : clientCoupons <= 0
+                        ? "El cliente no tiene cupones disponibles"
+                        : "No aplicar cupón"}
+                  </SelectItem>
+                  {selectedClient && clientCoupons > 0 && (
+                    <SelectItem value="apply">
+                      Aplicar cupón ({clientCoupons} disponibles)
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="space-y-2">
               <Label>Seleccionar empleado</Label>
-              <Select 
-                value={selectedEmployee} 
+              <Select
+                value={selectedEmployee}
                 onValueChange={setSelectedEmployee}
                 disabled={!isAdmin}
               >
@@ -537,18 +591,20 @@ export default function POSPage() {
               disabled={cart.length === 0 || !selectedEmployee || processing}
               onClick={completeSale}
             >
-              {processing ? 'Procesando...' : success ? (
+              {processing ? (
+                "Procesando..."
+              ) : success ? (
                 <>
                   <Check className="h-4 w-4 mr-2" />
                   ¡Venta completada!
                 </>
               ) : (
-                'Completar venta'
+                "Completar venta"
               )}
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
