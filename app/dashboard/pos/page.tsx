@@ -146,7 +146,9 @@ export default function POSPage() {
     })
   }, [items, search, selectedCategory])
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const discount = selectedCoupon ? cartTotal : 0
+  const total = cartTotal - discount
   const totalCommission = cart.reduce((sum, item) => sum + item.commission * item.quantity, 0)
 
   function addToCart(item: Service | Product, type: 'service' | 'product') {
@@ -243,18 +245,51 @@ export default function POSPage() {
         if (serviceCount > 0) {
           const client = clients?.find(c => c.id === selectedClient)
           if (client) {
-            const newStamps = (client.stamps + serviceCount) % 5
-            await supabase
-              .from('loyalty_clients')
-              .update({ stamps: newStamps })
-              .eq('id', selectedClient)
+            const totalStamps = client.stamps + serviceCount
+            
+            // If stamps >= 5, create coupon and reset
+            if (totalStamps >= 5) {
+              await supabase
+                .from('loyalty_coupons')
+                .insert({
+                  organization_id: profile.organization_id,
+                  client_id: selectedClient,
+                  description: 'Corte gratis',
+                  status: 'disponible'
+                })
+              
+              // Reset stamps to remainder
+              await supabase
+                .from('loyalty_clients')
+                .update({ stamps: totalStamps % 5 })
+                .eq('id', selectedClient)
+            } else {
+              // Just update stamps
+              await supabase
+                .from('loyalty_clients')
+                .update({ stamps: totalStamps })
+                .eq('id', selectedClient)
+            }
           }
         }
+      }
+
+      // Mark coupon as used if selected
+      if (selectedCoupon) {
+        await supabase
+          .from('loyalty_coupons')
+          .update({ 
+            status: 'usado',
+            used_at: new Date().toISOString(),
+            sale_id: sale.id
+          })
+          .eq('id', selectedCoupon)
       }
 
       // Reset cart
       setCart([])
       setSelectedClient('')
+      setSelectedCoupon('')
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
 
@@ -476,6 +511,12 @@ export default function POSPage() {
                 <span className="text-muted-foreground">Comisión</span>
                 <span>{formatCurrency(totalCommission)}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-sm mb-1 text-green-600">
+                  <span className="text-muted-foreground">Cupón aplicado</span>
+                  <span>-{formatCurrency(discount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>

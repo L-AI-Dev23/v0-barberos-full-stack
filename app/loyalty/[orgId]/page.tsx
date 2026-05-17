@@ -134,6 +134,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   function logout() {
     setClient(null)
     setHistory([])
+    setCoupons([])
     setClientName('')
   }
 
