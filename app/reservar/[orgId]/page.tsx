@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Scissors, Calendar, Clock, User, Heart, ArrowLeft, AlertCircle } from 'lucide-react'
-import type { Organization, LoyaltyClient, Service, Profile } from '@/lib/types/database'
+import { Scissors, Calendar, Clock, User, Heart, ArrowLeft, AlertCircle, X } from 'lucide-react'
+import type { Organization, LoyaltyClient, Service, Profile, Appointment } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -36,6 +36,18 @@ function formatDate(dateStr: string) {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
+  })
+}
+
+function formatDateTime(dateStr: string) {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('es-PE', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }) + ' a las ' + date.toLocaleTimeString('es-PE', {
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -58,6 +70,7 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
   const [selectedTime, setSelectedTime] = useState('')
   const [bookingSubmitting, setBookingSubmitting] = useState(false)
   const [bookingSuccess, setBookingSuccess] = useState(false)
+  const [appointments, setAppointments] = useState<(Appointment & { service?: Service; employee?: Profile })[]>([])
 
   // Load organization
   useEffect(() => {
@@ -110,6 +123,16 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
     if (existingClient) {
       setClient(existingClient)
       setStep('services')
+      
+      // Load client appointments
+      const { data: appointmentsData } = await supabase
+        .from('appointments')
+        .select('*, service:services(*), employee:profiles(*)')
+        .eq('client_id', existingClient.id)
+        .in('status', ['pendiente', 'confirmada'])
+        .order('appointment_time', { ascending: true })
+      
+      setAppointments(appointmentsData || [])
     } else {
       // Create new client
       const { data: newClient, error: createError } = await supabase
@@ -166,6 +189,19 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
         setSelectedDate('')
         setSelectedTime('')
         setBookingSuccess(false)
+        
+        // Reload appointments
+        async function reloadAppointments() {
+          const { data: appointmentsData } = await supabase
+            .from('appointments')
+            .select('*, service:services(*), employee:profiles(*)')
+            .eq('client_id', client.id)
+            .in('status', ['pendiente', 'confirmada'])
+            .order('appointment_time', { ascending: true })
+          
+          setAppointments(appointmentsData || [])
+        }
+        reloadAppointments()
       }, 2000)
     }
 
@@ -319,8 +355,52 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
               </CardContent>
             </Card>
 
+            {/* Active Appointments */}
+            {appointments.length > 0 && (
+              <>
+                <div className="border-t" />
+                
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">Tus citas activas</h2>
+                  <div className="space-y-3">
+                    {appointments.map((appointment) => (
+                      <Card key={appointment.id} className="border-l-4 border-l-primary">
+                        <CardContent className="pt-6">
+                          <div className="space-y-2">
+                            <p className="font-semibold text-lg">{appointment.service?.name}</p>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span>{formatDateTime(appointment.appointment_time)}</span>
+                            </div>
+                            {appointment.employee && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <User className="h-4 w-4" />
+                                <span>{appointment.employee.full_name}</span>
+                              </div>
+                            )}
+                            <div className="pt-2">
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                appointment.status === 'confirmada' 
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {appointment.status === 'confirmada' ? 'Confirmada' : 'Pendiente'}
+                              </span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Services List */}
-            <div>
+            <>
+              <div className="border-t" />
+              
+              <div>
               <h2 className="text-xl font-semibold mb-4">Servicios disponibles</h2>
               {services.length > 0 ? (
                 <ScrollArea className="h-auto md:h-[400px]">
@@ -429,6 +509,7 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
                 </Card>
               )}
             </div>
+            </>
           </>
         ) : null}
       </main>
