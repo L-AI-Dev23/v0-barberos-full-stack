@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { QRCodeSVG } from 'qrcode.react'
-import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check } from 'lucide-react'
+import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check, Heart } from 'lucide-react'
 import type { Appointment, Service, Profile } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
