@@ -105,6 +105,18 @@ export interface LoyaltyClient {
   updated_at: string
 }
 
+export interface LoyaltyCoupon {
+  id: string
+  organization_id: string
+  client_id: string
+  description: string
+  status: 'disponible' | 'usado' | 'expirado'
+  created_at: string
+  used_at: string | null
+  sale_id: string | null
+  client?: LoyaltyClient
+}
+
 export interface Sale {
   id: string
   organization_id: string

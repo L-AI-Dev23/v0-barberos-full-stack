@@ -3,6 +3,42 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+export async function checkAndCreateCoupon(clientId: string, organizationId: string) {
+  const supabase = await createClient()
+  
+  // Get client current stamps
+  const { data: client } = await supabase
+    .from('loyalty_clients')
+    .select('stamps')
+    .eq('id', clientId)
+    .single()
+  
+  if (!client) return { error: 'Cliente no encontrado' }
+  
+  // If stamps >= 5, create coupon and reset stamps
+  if (client.stamps >= 5) {
+    // Create coupon
+    await supabase
+      .from('loyalty_coupons')
+      .insert({
+        organization_id: organizationId,
+        client_id: clientId,
+        description: 'Corte gratis',
+        status: 'disponible'
+      })
+    
+    // Reset stamps to 0
+    await supabase
+      .from('loyalty_clients')
+      .update({ stamps: 0 })
+      .eq('id', clientId)
+    
+    return { success: true, couponCreated: true }
+  }
+  
+  return { success: true, couponCreated: false }
+}
+
 export async function signUp(formData: FormData) {
   const supabase = await createClient()
 

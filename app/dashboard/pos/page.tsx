@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Search, Plus, Minus, Trash2, User, ShoppingCart, Check } from 'lucide-react'
-import type { Service, Product, LoyaltyClient, Profile, CartItem, ServiceCategory, ProductCategory } from '@/lib/types/database'
+import type { Service, Product, LoyaltyClient, Profile, CartItem, ServiceCategory, ProductCategory, LoyaltyCoupon } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -38,6 +38,7 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [selectedClient, setSelectedClient] = useState<string>('')
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
+  const [selectedCoupon, setSelectedCoupon] = useState<string>('')
   const [processing, setProcessing] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -110,6 +111,18 @@ export default function POSPage() {
         .select('*')
         .eq('organization_id', profile!.organization_id)
         .order('full_name')
+      return data || []
+    }
+  )
+
+  const { data: availableCoupons } = useSWR<LoyaltyCoupon[]>(
+    selectedClient ? `pos-coupons-${selectedClient}` : null,
+    async () => {
+      const { data } = await supabase
+        .from('loyalty_coupons')
+        .select('*')
+        .eq('client_id', selectedClient)
+        .eq('status', 'disponible')
       return data || []
     }
   )
@@ -417,6 +430,26 @@ export default function POSPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Coupon Selector */}
+            {selectedClient && availableCoupons && availableCoupons.length > 0 && (
+              <div className="space-y-2">
+                <Label>Cupón</Label>
+                <Select value={selectedCoupon} onValueChange={setSelectedCoupon}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin cupón" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sin cupón</SelectItem>
+                    {availableCoupons.map((coupon) => (
+                      <SelectItem key={coupon.id} value={coupon.id}>
+                        {coupon.description}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Seleccionar empleado</Label>

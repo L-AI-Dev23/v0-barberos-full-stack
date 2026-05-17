@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Scissors, Heart, Gift, ArrowLeft } from 'lucide-react'
-import type { Organization, LoyaltyClient, Sale, SaleItem } from '@/lib/types/database'
+import type { Organization, LoyaltyClient, Sale, SaleItem, LoyaltyCoupon } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -24,6 +24,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [client, setClient] = useState<LoyaltyClient | null>(null)
   const [history, setHistory] = useState<(Sale & { items: SaleItem[] })[]>([])
+  const [coupons, setCoupons] = useState<LoyaltyCoupon[]>([])
   const [clientName, setClientName] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -87,6 +88,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
     if (existingClient) {
       setClient(existingClient)
       loadHistory(existingClient.id)
+      loadCoupons(existingClient.id)
     } else {
       // Create new client
       const { data: newClient, error: createError } = await supabase
@@ -110,14 +112,23 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   }
 
   async function loadHistory(clientId: string) {
-    const { data } = await supabase
+    const { data: historyData } = await supabase
       .from('sales')
-      .select('*, items:sale_items(*, service:services(*), product:products(*))')
+      .select('*, items:sale_items(*)')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
-      .limit(50)
     
-    setHistory(data || [])
+    setHistory(historyData || [])
+  }
+
+  async function loadCoupons(clientId: string) {
+    const { data: couponsData } = await supabase
+      .from('loyalty_coupons')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('status', 'disponible')
+    
+    setCoupons(couponsData || [])
   }
 
   function logout() {
@@ -280,6 +291,30 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
             )}
           </CardContent>
         </Card>
+
+        {/* Available Coupons */}
+        {coupons.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-green-600" />
+                Available Free Services
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {coupons.map((coupon) => (
+                <div key={coupon.id} className="p-4 bg-green-50 dark:bg-green-900/10 border-l-4 border-l-green-600 rounded">
+                  <p className="font-semibold text-green-700 dark:text-green-400">
+                    {coupon.description}
+                  </p>
+                  <p className="text-sm text-green-600 dark:text-green-500 mt-1">
+                    Valid from {new Date(coupon.created_at).toLocaleDateString('es-PE')}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Service History */}
         <Card>
