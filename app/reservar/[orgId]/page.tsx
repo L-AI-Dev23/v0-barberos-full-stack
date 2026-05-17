@@ -75,14 +75,13 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
         .from('services')
         .select('*')
         .eq('organization_id', orgId)
-        .eq('active', true)
       
       setServices(servicesData || [])
 
       // Load employees
       const { data: employeesData } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name')
         .eq('organization_id', orgId)
         .eq('role', 'employee')
       
