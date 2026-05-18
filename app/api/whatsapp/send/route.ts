@@ -138,12 +138,13 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         number: number,
+        text: message, // Para Evolution API v2 (requiere propiedad 'text' en la raíz)
+        textMessage: {
+          text: message // Para Evolution API v1
+        },
         options: {
           delay: 1200,
           presence: "composing"
-        },
-        textMessage: {
-          text: message
         }
       })
     });
