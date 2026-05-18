@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
     // 1. Intentar crear la instancia en Evolution API
     try {
-      await fetch(`${whatsappApiUrlSanitized}/instance/create`, {
+      const createRes = await fetch(`${whatsappApiUrlSanitized}/instance/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -45,8 +45,9 @@ export async function POST(req: Request) {
           qrcode: true
         })
       });
+      const createData = await createRes.json().catch(() => ({}));
+      console.log('Create instance API Response:', createData);
     } catch (e) {
-      // Si ya existe la instancia, continuará y el siguiente paso obtendrá el QR o estado
       console.log('La instancia ya podría existir, continuando...', e);
     }
 
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
     });
 
     const stateData = await stateRes.json().catch(() => ({}));
+    console.log('Connection state API Response:', stateData);
 
     if (stateData.instance?.state === 'open') {
       return NextResponse.json({ status: 'connected' });
@@ -66,13 +68,19 @@ export async function POST(req: Request) {
       headers: { 'apikey': whatsapp_api_key }
     });
 
-    const qrData = await qrRes.json();
+    const qrData = await qrRes.json().catch(() => ({}));
+    console.log('Connect/QR API Response:', qrData);
 
     if (qrData.qrcode?.base64) {
       return NextResponse.json({ status: 'qr', qrCode: qrData.qrcode.base64 });
     }
 
-    return NextResponse.json({ status: 'disconnected', message: 'No se pudo obtener el QR. Intente de nuevo.' });
+    // Retornar mensaje detallado si la API devolvió un error específico
+    const errMsg = qrData.message || qrData.error || JSON.stringify(qrData);
+    return NextResponse.json({ 
+      status: 'disconnected', 
+      message: `No se pudo obtener el QR. Detalle del servidor: ${errMsg}` 
+    });
 
   } catch (error: any) {
     console.error('Error en API connect:', error);
