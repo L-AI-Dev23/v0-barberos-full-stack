@@ -5,6 +5,22 @@ export interface Organization {
   name: string
   logo_url: string | null
   coupon_service_id: string | null
+  whatsapp_api_url: string | null
+  whatsapp_api_key: string | null
+  whatsapp_instance_name: string | null
+  whatsapp_connected: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface WhatsAppRule {
+  id: string
+  organization_id: string
+  name: string
+  trigger_event: 'booking_created' | 'booking_completed' | 'reminder_30m' | 'custom_days'
+  days_delay: number | null
+  message_template: string
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -100,6 +116,7 @@ export interface LoyaltyClient {
   organization_id: string
   stamps: number
   coupons: number
+  phone: string | null
   created_at: string
   updated_at: string
 }

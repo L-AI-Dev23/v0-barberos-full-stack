@@ -44,6 +44,10 @@ import {
   Check,
   Gift,
   Settings,
+  MessageSquare,
+  Phone,
+  Trash2,
+  Plus
 } from "lucide-react";
 import type {
   LoyaltyClient,
@@ -51,6 +55,7 @@ import type {
   SaleItem,
   Service,
   Organization,
+  WhatsAppRule
 } from "@/lib/types/database";
 
 function formatCurrency(amount: number) {
@@ -76,6 +81,20 @@ export default function LoyaltyPage() {
   const [savingConfig, setSavingConfig] = useState(false);
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
+  
+  // WhatsApp States
+  const [messagesModalOpen, setMessagesModalOpen] = useState(false);
+  const [waApiUrl, setWaApiUrl] = useState("");
+  const [waApiKey, setWaApiKey] = useState("");
+  const [waInstance, setWaInstance] = useState("");
+  const [savingWaConfig, setSavingWaConfig] = useState(false);
+  
+  const [newRule, setNewRule] = useState<Partial<WhatsAppRule>>({
+    name: "",
+    trigger_event: "booking_created",
+    days_delay: null,
+    message_template: ""
+  });
 
   const loyaltyUrl =
     typeof window !== "undefined"
@@ -130,6 +149,18 @@ export default function LoyaltyPage() {
         .eq("id", profile!.organization_id)
         .single();
       return data;
+    },
+  );
+
+  const { data: whatsappRules, mutate: mutateRules } = useSWR<WhatsAppRule[]>(
+    profile?.organization_id ? "whatsapp-rules" : null,
+    async () => {
+      const { data } = await supabase
+        .from("whatsapp_rules")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .order("created_at", { ascending: true });
+      return data || [];
     },
   );
 
@@ -189,6 +220,53 @@ export default function LoyaltyPage() {
     setConfigModalOpen(true);
   }
 
+  function openMessagesModal() {
+    setWaApiUrl(organization?.whatsapp_api_url || "");
+    setWaApiKey(organization?.whatsapp_api_key || "");
+    setWaInstance(organization?.whatsapp_instance_name || "");
+    setMessagesModalOpen(true);
+  }
+
+  async function saveWaConfig() {
+    if (!profile?.organization_id) return;
+    setSavingWaConfig(true);
+    await supabase
+      .from("organizations")
+      .update({
+        whatsapp_api_url: waApiUrl,
+        whatsapp_api_key: waApiKey,
+        whatsapp_instance_name: waInstance,
+        whatsapp_connected: true
+      })
+      .eq("id", profile.organization_id);
+    mutateOrg();
+    setSavingWaConfig(false);
+  }
+
+  async function saveNewRule() {
+    if (!profile?.organization_id || !newRule.name || !newRule.message_template) return;
+    await supabase.from("whatsapp_rules").insert({
+      organization_id: profile.organization_id,
+      name: newRule.name,
+      trigger_event: newRule.trigger_event,
+      days_delay: newRule.trigger_event === 'custom_days' ? newRule.days_delay : null,
+      message_template: newRule.message_template,
+      is_active: true
+    });
+    setNewRule({
+      name: "",
+      trigger_event: "booking_created",
+      days_delay: null,
+      message_template: ""
+    });
+    mutateRules();
+  }
+
+  async function deleteRule(id: string) {
+    await supabase.from("whatsapp_rules").delete().eq("id", id);
+    mutateRules();
+  }
+
   async function saveConfig() {
     if (!profile?.organization_id) return;
     setSavingConfig(true);
@@ -212,6 +290,10 @@ export default function LoyaltyPage() {
         </div>
         {isAdmin && (
           <div className="flex gap-2">
+            <Button variant="outline" onClick={openMessagesModal}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Mensajes
+            </Button>
             <Button variant="outline" onClick={openConfigModal}>
               <Settings className="h-4 w-4 mr-2" />
               Configurar
@@ -466,6 +548,163 @@ export default function LoyaltyPage() {
               {savingConfig ? "Guardando..." : "Guardar configuración"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Messages Modal */}
+      <Dialog open={messagesModalOpen} onOpenChange={setMessagesModalOpen}>
+        <DialogContent className="w-full sm:max-w-3xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Mensajes y Recordatorios de WhatsApp
+            </DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-8 py-4">
+              {/* WhatsApp Connection Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Conexión WhatsApp (API No Oficial)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>API URL</Label>
+                    <Input 
+                      placeholder="Ej. https://api.whatsapp-gateway.com" 
+                      value={waApiUrl}
+                      onChange={(e) => setWaApiUrl(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Instance Name / Token</Label>
+                    <Input 
+                      placeholder="Ej. barberia_main" 
+                      value={waInstance}
+                      onChange={(e) => setWaInstance(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>API Key</Label>
+                    <Input 
+                      type="password"
+                      placeholder="Tu API Key secreta" 
+                      value={waApiKey}
+                      onChange={(e) => setWaApiKey(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button onClick={saveWaConfig} disabled={savingWaConfig}>
+                  {savingWaConfig ? "Guardando..." : "Guardar conexión"}
+                </Button>
+                {organization?.whatsapp_connected && (
+                  <p className="text-sm text-green-600 flex items-center gap-1">
+                    <Check className="h-4 w-4" /> Conexión guardada
+                  </p>
+                )}
+              </div>
+
+              <div className="border-t pt-8 space-y-4">
+                <h3 className="text-lg font-semibold">Configurador de Mensajes</h3>
+                
+                {/* Rules List */}
+                <div className="space-y-3">
+                  {whatsappRules?.map(rule => (
+                    <Card key={rule.id}>
+                      <CardContent className="p-4 flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="font-semibold">{rule.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Evento: {
+                              rule.trigger_event === 'booking_created' ? 'Cita Creada' :
+                              rule.trigger_event === 'booking_completed' ? 'Cita Completada' :
+                              rule.trigger_event === 'reminder_30m' ? 'Recordatorio 30m antes' :
+                              `Días después: ${rule.days_delay}`
+                            }
+                          </p>
+                          <p className="text-sm bg-muted p-2 rounded-md mt-2">
+                            {rule.message_template}
+                          </p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteRule(rule.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {whatsappRules?.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No hay reglas configuradas.</p>
+                  )}
+                </div>
+
+                {/* Create New Rule */}
+                <Card className="border-dashed mt-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Plus className="h-4 w-4" /> Nueva regla
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nombre de la regla</Label>
+                        <Input 
+                          placeholder="Ej. Recordatorio 30m" 
+                          value={newRule.name}
+                          onChange={(e) => setNewRule({...newRule, name: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Evento disparador</Label>
+                        <Select 
+                          value={newRule.trigger_event} 
+                          onValueChange={(v) => setNewRule({...newRule, trigger_event: v as any})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="booking_created">Al crear la cita</SelectItem>
+                            <SelectItem value="booking_completed">Al completar cita</SelectItem>
+                            <SelectItem value="reminder_30m">30 minutos antes</SelectItem>
+                            <SelectItem value="custom_days">Días personalizados</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {newRule.trigger_event === 'custom_days' && (
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>Días de retraso</Label>
+                          <Input 
+                            type="number"
+                            placeholder="Ej. 5" 
+                            value={newRule.days_delay || ''}
+                            onChange={(e) => setNewRule({...newRule, days_delay: parseInt(e.target.value)})}
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Plantilla del mensaje</Label>
+                        <p className="text-xs text-muted-foreground">Variables: {'{nombre_cliente}'}, {'{fecha_cita}'}, {'{hora_cita}'}</p>
+                        <textarea 
+                          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="Hola {nombre_cliente}, tienes una cita..."
+                          value={newRule.message_template}
+                          onChange={(e) => setNewRule({...newRule, message_template: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <Button onClick={saveNewRule} className="w-full">
+                      Añadir Regla
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
