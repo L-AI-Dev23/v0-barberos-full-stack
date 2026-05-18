@@ -88,6 +88,9 @@ export default function LoyaltyPage() {
   const [waApiKey, setWaApiKey] = useState("");
   const [waInstance, setWaInstance] = useState("");
   const [savingWaConfig, setSavingWaConfig] = useState(false);
+  const [loadingQr, setLoadingQr] = useState(false);
+  const [qrImage, setQrImage] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'qr' | 'connected'>('disconnected');
   
   const [newRule, setNewRule] = useState<Partial<WhatsAppRule>>({
     name: "",
@@ -220,11 +223,66 @@ export default function LoyaltyPage() {
     setConfigModalOpen(true);
   }
 
+  async function connectWhatsApp() {
+    if (!profile?.organization_id) return;
+    setLoadingQr(true);
+    setQrImage(null);
+    setConnectionStatus('disconnected');
+    try {
+      const res = await fetch('/api/whatsapp/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: profile.organization_id })
+      });
+      const data = await res.json();
+      if (data.status === 'connected') {
+        setConnectionStatus('connected');
+        await supabase
+          .from("organizations")
+          .update({ whatsapp_connected: true })
+          .eq("id", profile.organization_id);
+        mutateOrg();
+      } else if (data.status === 'qr') {
+        setConnectionStatus('qr');
+        setQrImage(data.qrCode);
+      } else {
+        alert(data.error || data.message || 'Error al conectar');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al intentar conectar');
+    } finally {
+      setLoadingQr(false);
+    }
+  }
+
+  async function checkConnectionState() {
+    if (!profile?.organization_id || !organization?.whatsapp_api_url || !organization?.whatsapp_instance_name) return;
+    try {
+      const res = await fetch('/api/whatsapp/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: profile.organization_id })
+      });
+      const data = await res.json();
+      if (data.status === 'connected') {
+        setConnectionStatus('connected');
+      } else {
+        setConnectionStatus('disconnected');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   function openMessagesModal() {
     setWaApiUrl(organization?.whatsapp_api_url || "");
     setWaApiKey(organization?.whatsapp_api_key || "");
     setWaInstance(organization?.whatsapp_instance_name || "");
     setMessagesModalOpen(true);
+    setTimeout(() => {
+      checkConnectionState();
+    }, 200);
   }
 
   async function saveWaConfig() {
@@ -596,13 +654,43 @@ export default function LoyaltyPage() {
                     />
                   </div>
                 </div>
-                <Button onClick={saveWaConfig} disabled={savingWaConfig}>
-                  {savingWaConfig ? "Guardando..." : "Guardar conexión"}
-                </Button>
-                {organization?.whatsapp_connected && (
-                  <p className="text-sm text-green-600 flex items-center gap-1">
-                    <Check className="h-4 w-4" /> Conexión guardada
-                  </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button onClick={saveWaConfig} disabled={savingWaConfig}>
+                    {savingWaConfig ? "Guardando..." : "Guardar conexión"}
+                  </Button>
+                  
+                  {organization?.whatsapp_api_url && organization?.whatsapp_instance_name && (
+                    <Button 
+                      variant="outline" 
+                      onClick={connectWhatsApp} 
+                      disabled={loadingQr}
+                      className="border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
+                    >
+                      {loadingQr ? "Generando QR..." : "Conectar Celular (Ver QR)"}
+                    </Button>
+                  )}
+
+                  {connectionStatus === 'connected' && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                      <span className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></span>
+                      WhatsApp Conectado y Activo
+                    </span>
+                  )}
+                </div>
+
+                {qrImage && connectionStatus === 'qr' && (
+                  <Card className="mt-4 max-w-sm mx-auto">
+                    <CardHeader className="text-center pb-2">
+                      <CardTitle className="text-sm font-semibold">Escanea el código QR desde tu celular</CardTitle>
+                      <p className="text-xs text-muted-foreground">Abre WhatsApp &gt; Dispositivos vinculados &gt; Vincular un dispositivo</p>
+                    </CardHeader>
+                    <CardContent className="flex flex-col items-center justify-center p-6">
+                      <img src={qrImage} alt="WhatsApp QR Code" className="w-64 h-64 border rounded p-2 bg-white" />
+                      <Button variant="ghost" size="sm" onClick={connectWhatsApp} className="mt-4 text-xs">
+                        ¿Ya lo escaneaste? Validar conexión
+                      </Button>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
 
