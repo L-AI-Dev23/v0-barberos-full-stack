@@ -196,11 +196,19 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
       
       // Enviar notificación de WhatsApp en segundo plano de forma segura
       if (newAppt?.id) {
+        console.log('[WhatsApp Frontend] Enviando petición de envío de WhatsApp para cita:', newAppt.id);
         fetch('/api/whatsapp/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ appointmentId: newAppt.id, event: 'booking_created' })
-        }).catch(console.error);
+        })
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          console.log('[WhatsApp Frontend] Respuesta del servidor al enviar WhatsApp:', res.status, data);
+        })
+        .catch(err => {
+          console.error('[WhatsApp Frontend] Error al enviar petición de WhatsApp:', err);
+        });
       }
       setTimeout(() => {
         setStep('services')
