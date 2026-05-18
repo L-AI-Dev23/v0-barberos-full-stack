@@ -301,8 +301,6 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
           </CardContent>
         </Card>
 
-        </Card>
-
         {/* WhatsApp Phone Card */}
         <Card>
           <CardHeader>
