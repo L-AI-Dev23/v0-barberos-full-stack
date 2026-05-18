@@ -63,7 +63,15 @@ serve(async (req) => {
 
         // Enviar WhatsApp (Ejemplo con Evolution API u otro Gateway estandarizado)
         try {
-          const endpoint = `${org.whatsapp_api_url}/message/sendText/${org.whatsapp_instance_name}`
+          let apiUrl = org.whatsapp_api_url.trim()
+          if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+            apiUrl = `https://${apiUrl}`
+          }
+          if (apiUrl.endsWith('/')) {
+            apiUrl = apiUrl.slice(0, -1)
+          }
+          
+          const endpoint = `${apiUrl}/message/sendText/${org.whatsapp_instance_name}`
           const response = await fetch(endpoint, {
             method: 'POST',
             headers: {

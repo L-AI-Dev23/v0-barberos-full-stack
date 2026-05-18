@@ -23,9 +23,18 @@ export async function POST(req: Request) {
 
     const { whatsapp_api_url, whatsapp_api_key, whatsapp_instance_name } = org;
 
+    // Sanitizar y formatear URL de la API de WhatsApp
+    let whatsappApiUrlSanitized = whatsapp_api_url.trim();
+    if (!whatsappApiUrlSanitized.startsWith('http://') && !whatsappApiUrlSanitized.startsWith('https://')) {
+      whatsappApiUrlSanitized = `https://${whatsappApiUrlSanitized}`;
+    }
+    if (whatsappApiUrlSanitized.endsWith('/')) {
+      whatsappApiUrlSanitized = whatsappApiUrlSanitized.slice(0, -1);
+    }
+
     // 1. Intentar crear la instancia en Evolution API
     try {
-      await fetch(`${whatsapp_api_url}/instance/create`, {
+      await fetch(`${whatsappApiUrlSanitized}/instance/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +51,7 @@ export async function POST(req: Request) {
     }
 
     // 2. Obtener el estado actual de la conexión o el código QR
-    const stateRes = await fetch(`${whatsapp_api_url}/instance/connectionState/${whatsapp_instance_name}`, {
+    const stateRes = await fetch(`${whatsappApiUrlSanitized}/instance/connectionState/${whatsapp_instance_name}`, {
       headers: { 'apikey': whatsapp_api_key }
     });
 
@@ -53,7 +62,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Si no está conectado, pedir el código QR
-    const qrRes = await fetch(`${whatsapp_api_url}/instance/connect/${whatsapp_instance_name}`, {
+    const qrRes = await fetch(`${whatsappApiUrlSanitized}/instance/connect/${whatsapp_instance_name}`, {
       headers: { 'apikey': whatsapp_api_key }
     });
 
