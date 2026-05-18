@@ -205,9 +205,15 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
         .then(async (res) => {
           const data = await res.json().catch(() => ({}));
           console.log('[WhatsApp Frontend] Respuesta del servidor al enviar WhatsApp:', res.status, data);
+          if (!res.ok) {
+            alert(`[Error WhatsApp] Código: ${res.status}\nDetalle: ${JSON.stringify(data)}`);
+          } else {
+            alert(`[Éxito WhatsApp] ¡Mensaje enviado exitosamente!\nDetalle: ${JSON.stringify(data)}`);
+          }
         })
         .catch(err => {
           console.error('[WhatsApp Frontend] Error al enviar petición de WhatsApp:', err);
+          alert(`[Error Red WhatsApp] No se pudo conectar con el servidor: ${err.message}`);
         });
       }
       setTimeout(() => {
