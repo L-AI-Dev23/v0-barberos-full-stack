@@ -611,7 +611,7 @@ export default function LoyaltyPage() {
 
       {/* Messages Modal */}
       <Dialog open={messagesModalOpen} onOpenChange={setMessagesModalOpen}>
-        <DialogContent className="w-full sm:max-w-3xl h-[80vh] flex flex-col">
+        <DialogContent className="w-full sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
@@ -619,7 +619,7 @@ export default function LoyaltyPage() {
             </DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 pr-4">
+          <div className="flex-1 overflow-y-auto pr-2 min-h-0">
             <div className="space-y-8 py-4">
               {/* WhatsApp Connection Section */}
               <div className="space-y-4">
@@ -792,7 +792,7 @@ export default function LoyaltyPage() {
                 </Card>
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
