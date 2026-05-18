@@ -20,6 +20,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -423,11 +429,11 @@ export default function LoyaltyPage() {
       </Sheet>
 
       {/* Config Modal */}
-      <Sheet open={configModalOpen} onOpenChange={setConfigModalOpen}>
-        <SheetContent className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Configuración de cupones</SheetTitle>
-          </SheetHeader>
+      <Dialog open={configModalOpen} onOpenChange={setConfigModalOpen}>
+        <DialogContent className="w-full sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configuración de cupones</DialogTitle>
+          </DialogHeader>
           <div className="space-y-6 py-6">
             <div className="space-y-2">
               <Label>Servicio del cupón</Label>
@@ -460,8 +466,8 @@ export default function LoyaltyPage() {
               {savingConfig ? "Guardando..." : "Guardar configuración"}
             </Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
