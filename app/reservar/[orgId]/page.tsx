@@ -58,6 +58,7 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [client, setClient] = useState<LoyaltyClient | null>(null)
   const [clientName, setClientName] = useState('')
+  const [clientPhone, setClientPhone] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -121,6 +122,13 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
       .single()
 
     if (existingClient) {
+      if (clientPhone.trim() && existingClient.phone !== clientPhone.trim()) {
+        await supabase
+          .from('loyalty_clients')
+          .update({ phone: clientPhone.trim() })
+          .eq('id', existingClient.id)
+        existingClient.phone = clientPhone.trim()
+      }
       setClient(existingClient)
       setStep('services')
       
@@ -139,6 +147,7 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
         .from('loyalty_clients')
         .insert({
           name: clientName.trim(),
+          phone: clientPhone.trim() || null,
           organization_id: orgId,
           stamps: 0,
         })
@@ -167,7 +176,7 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
 
     const appointmentTime = new Date(`${selectedDate}T${selectedTime}`)
 
-    const { error: bookError } = await supabase
+    const { data: newAppt, error: bookError } = await supabase
       .from('appointments')
       .insert({
         organization_id: orgId,
@@ -177,11 +186,22 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
         appointment_time: appointmentTime.toISOString(),
         status: 'pendiente',
       })
+      .select('id')
+      .single()
 
     if (bookError) {
       setError('No se pudo agendar la cita. Por favor intenta de nuevo.')
     } else {
       setBookingSuccess(true)
+      
+      // Enviar notificación de WhatsApp en segundo plano de forma segura
+      if (newAppt?.id) {
+        fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appointmentId: newAppt.id, event: 'booking_created' })
+        }).catch(console.error);
+      }
       setTimeout(() => {
         setStep('services')
         setSelectedService(null)
@@ -277,6 +297,19 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
                   onChange={(e) => setClientName(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Tu teléfono / WhatsApp</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="Ej. 987654321"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Para recibir recordatorios y confirmaciones automáticas de tus citas.</p>
               </div>
 
               <Button type="submit" className="w-full" disabled={submitting}>

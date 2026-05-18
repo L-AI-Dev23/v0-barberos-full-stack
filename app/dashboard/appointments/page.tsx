@@ -99,6 +99,15 @@ export default function AppointmentsPage() {
       .eq('id', appointmentId)
     
     mutateAppointments()
+
+    // Enviar notificación de WhatsApp (Cita Completada) en segundo plano
+    if (newStatus === 'completada') {
+      fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId, event: 'booking_completed' })
+      }).catch(console.error);
+    }
   }
 
   async function deleteAppointment(appointmentId: string) {
