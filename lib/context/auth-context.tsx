@@ -148,23 +148,18 @@ export function AuthProvider({
       },
     )
 
-    // Al volver a esta pestaña, forzamos la comprobación de sesión en vez de
-    // esperar al timer interno de Supabase (puede haberse retrasado por
-    // throttling en background). Con timeout: si esta llamada se cuelga, no
-    // debe quedar una promesa flotando ocupando el lock interno de Supabase
-    // y bloqueando las llamadas de auth posteriores (incluido el propio
-    // auto-refresh).
-    function handleVisibility() {
-      if (document.visibilityState === 'visible') {
-        withTimeout(supabase.auth.getSession(), 8000)
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
+    // Nota: NO agregamos un listener manual de visibilitychange que llame a
+    // supabase.auth.getSession(). supabase-js ya escucha visibility/focus
+    // internamente y coordina su propio auto-refresh usando el lock de
+    // navigator.locks. Una llamada manual adicional en ese mismo instante
+    // compite por el mismo lock justo cuando la red y el tab se están
+    // "despertando", y puede quedarse esperando el lock indefinidamente.
+    // Dejamos que Supabase maneje esto solo (igual que en el resto de
+    // proyectos, donde nunca hubo este listener).
 
     return () => {
       mounted = false
       subscription.unsubscribe()
-      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [supabase, fetchProfile, initialProfile, initialUser])
 
