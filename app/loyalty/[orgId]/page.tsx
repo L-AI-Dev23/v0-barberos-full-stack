@@ -250,7 +250,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   }
 
   async function bookAppointment() {
-    if (!selectedService || !selectedEmployee || !selectedDate || !selectedTime || !client) {
+    if (!selectedService || !selectedDate || !selectedTime || !client) {
       setError('Por favor completa todos los campos')
       return
     }
@@ -266,7 +266,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         organization_id: orgId,
         client_id: client.id,
         service_id: selectedService.id,
-        employee_id: selectedEmployee,
+        employee_id: selectedEmployee || null,
         appointment_time: appointmentTime.toISOString(),
         status: 'pendiente',
       })
@@ -620,12 +620,16 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                           )}
 
                           <div>
-                            <Label htmlFor="employee">Selecciona un barbero</Label>
-                            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                            <Label htmlFor="employee">Selecciona un barbero (opcional)</Label>
+                            <Select
+                              value={selectedEmployee || 'none'}
+                              onValueChange={(v) => setSelectedEmployee(v === 'none' ? '' : v)}
+                            >
                               <SelectTrigger className="mt-2">
-                                <SelectValue placeholder="Elige un barbero" />
+                                <SelectValue placeholder="Sin preferencia" />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="none">Sin preferencia</SelectItem>
                                 {employees.map((emp) => (
                                   <SelectItem key={emp.id} value={emp.id}>
                                     {emp.full_name}
