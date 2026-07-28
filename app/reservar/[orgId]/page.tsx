@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Scissors, Calendar, Clock, User, Heart, ArrowLeft, AlertCircle, X, Gift } from 'lucide-react'
-import type { Organization, LoyaltyClient, Service, Profile, Appointment } from '@/lib/types/database'
+import type { PublicOrganization, LoyaltyClient, Service, Profile, Appointment } from '@/lib/types/database'
+import { triggerBookingWhatsApp } from '@/lib/actions/whatsapp'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -55,7 +56,7 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
   const { orgId } = use(params)
   const supabase = createClient()
   
-  const [organization, setOrganization] = useState<Organization | null>(null)
+  const [organization, setOrganization] = useState<PublicOrganization | null>(null)
   const [client, setClient] = useState<LoyaltyClient | null>(null)
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
@@ -77,8 +78,8 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
   useEffect(() => {
     async function loadOrg() {
       const { data } = await supabase
-        .from('organizations')
-        .select('*')
+        .from('organizations_public')
+        .select('id, name, logo_url')
         .eq('id', orgId)
         .single()
       
@@ -194,27 +195,10 @@ export default function BookingPage({ params }: { params: Promise<{ orgId: strin
     } else {
       setBookingSuccess(true)
       
-      // Enviar notificación de WhatsApp en segundo plano de forma segura
       if (newAppt?.id) {
-        console.log('[WhatsApp Frontend] Enviando petición de envío de WhatsApp para cita:', newAppt.id);
-        fetch('/api/whatsapp/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ appointmentId: newAppt.id, event: 'booking_created' })
+        triggerBookingWhatsApp(newAppt.id, orgId).catch(() => {
+          // El envío de WhatsApp es best-effort; no bloquea la reserva.
         })
-        .then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          console.log('[WhatsApp Frontend] Respuesta del servidor al enviar WhatsApp:', res.status, data);
-          if (!res.ok) {
-            alert(`[Error WhatsApp] Código: ${res.status}\nDetalle: ${JSON.stringify(data)}`);
-          } else {
-            alert(`[Éxito WhatsApp] ¡Mensaje enviado exitosamente!\nDetalle: ${JSON.stringify(data)}`);
-          }
-        })
-        .catch(err => {
-          console.error('[WhatsApp Frontend] Error al enviar petición de WhatsApp:', err);
-          alert(`[Error Red WhatsApp] No se pudo conectar con el servidor: ${err.message}`);
-        });
       }
       setTimeout(() => {
         setStep('services')

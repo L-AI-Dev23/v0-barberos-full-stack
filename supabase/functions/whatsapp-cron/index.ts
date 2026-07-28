@@ -1,20 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 
-console.log("WhatsApp Cron function up and running!")
-
 serve(async (req) => {
   try {
-    // Inicializar cliente Supabase (usando service role para bypass RLS)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // 1. Obtener todas las citas confirmadas que ocurran en exactamente 30 minutos
     const { data: appointments, error: apptError } = await supabaseClient
-      .rpc('get_appointments_in_30m') // Esta funcion RPC debe ser creada en supabase
-    
+      .rpc('get_appointments_in_30m')
+
     if (apptError) throw apptError
 
     if (!appointments || appointments.length === 0) {
@@ -25,21 +21,19 @@ serve(async (req) => {
 
     let messagesSent = 0
 
-    // 2. Por cada cita, obtener el cliente y la configuración de WhatsApp
     for (const appt of appointments) {
       const { data: client } = await supabaseClient
         .from('loyalty_clients')
         .select('name, phone')
         .eq('id', appt.client_id)
         .single()
-      
+
       const { data: org } = await supabaseClient
         .from('organizations')
         .select('whatsapp_api_url, whatsapp_api_key, whatsapp_instance_name, whatsapp_connected')
         .eq('id', appt.organization_id)
         .single()
-      
-      // 3. Buscar la regla de mensaje para "reminder_30m"
+
       const { data: rule } = await supabaseClient
         .from('whatsapp_rules')
         .select('message_template')
@@ -49,19 +43,16 @@ serve(async (req) => {
         .single()
 
       if (client?.phone && org?.whatsapp_connected && org.whatsapp_api_url && rule) {
-        // Reemplazar variables en el mensaje
         let message = rule.message_template
         message = message.replace(/{nombre_cliente}/g, client.name)
-        
-        // Formatear fecha y hora
+
         const apptDate = new Date(appt.appointment_time)
         const timeStr = apptDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
         const dateStr = apptDate.toLocaleDateString('es-PE')
-        
+
         message = message.replace(/{hora_cita}/g, timeStr)
         message = message.replace(/{fecha_cita}/g, dateStr)
 
-        // Enviar WhatsApp (Ejemplo con Evolution API u otro Gateway estandarizado)
         try {
           let apiUrl = org.whatsapp_api_url.trim()
           if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
@@ -70,7 +61,7 @@ serve(async (req) => {
           if (apiUrl.endsWith('/')) {
             apiUrl = apiUrl.slice(0, -1)
           }
-          
+
           const endpoint = `${apiUrl}/message/sendText/${org.whatsapp_instance_name}`
           const response = await fetch(endpoint, {
             method: 'POST',
@@ -92,12 +83,11 @@ serve(async (req) => {
 
           if (response.ok) {
             messagesSent++
-            console.log(`Mensaje enviado a ${client.phone}`)
           } else {
-            console.error(`Error enviando mensaje a ${client.phone}: ${await response.text()}`)
+            console.error(`WhatsApp reminder failed for appointment ${appt.id}: HTTP ${response.status}`)
           }
         } catch (e) {
-          console.error(`Error fetch para ${client.phone}:`, e)
+          console.error(`WhatsApp reminder fetch error for appointment ${appt.id}:`, e)
         }
       }
     }
@@ -107,7 +97,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error("Function error:", error)
+    console.error("WhatsApp cron error:", error)
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

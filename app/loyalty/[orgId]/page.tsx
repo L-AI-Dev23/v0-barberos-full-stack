@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Scissors, Heart, Gift, ArrowLeft } from 'lucide-react'
-import type { Organization, LoyaltyClient, Sale, SaleItem } from '@/lib/types/database'
+import type { PublicOrganization, LoyaltyClient, Sale, SaleItem } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -21,7 +21,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   const { orgId } = use(params)
   const supabase = createClient()
   
-  const [organization, setOrganization] = useState<Organization | null>(null)
+  const [organization, setOrganization] = useState<PublicOrganization | null>(null)
   const [client, setClient] = useState<LoyaltyClient | null>(null)
   const [history, setHistory] = useState<(Sale & { items: SaleItem[] })[]>([])
   const [clientName, setClientName] = useState('')
@@ -33,8 +33,8 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   useEffect(() => {
     async function loadOrg() {
       const { data } = await supabase
-        .from('organizations')
-        .select('*')
+        .from('organizations_public')
+        .select('id, name, logo_url')
         .eq('id', orgId)
         .single()
       

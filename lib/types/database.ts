@@ -13,6 +13,8 @@ export interface Organization {
   updated_at: string
 }
 
+export type PublicOrganization = Pick<Organization, 'id' | 'name' | 'logo_url'>
+
 export interface WhatsAppRule {
   id: string
   organization_id: string
