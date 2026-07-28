@@ -6,9 +6,42 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Scissors, Heart, Gift, ArrowLeft } from 'lucide-react'
-import type { PublicOrganization, LoyaltyClient, Sale, SaleItem } from '@/lib/types/database'
+import {
+  Scissors,
+  Calendar,
+  User,
+  Heart,
+  ArrowLeft,
+  AlertCircle,
+  Gift,
+  Phone,
+} from 'lucide-react'
+import type {
+  PublicOrganization,
+  LoyaltyClient,
+  Sale,
+  SaleItem,
+  Service,
+  Profile,
+  Appointment,
+} from '@/lib/types/database'
+import { triggerBookingWhatsApp } from '@/lib/actions/whatsapp'
+import { normalizePhone, isValidPhone } from '@/lib/utils/phone'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -17,19 +50,48 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
+function formatDateTime(dateStr: string) {
+  const date = new Date(dateStr)
+  return (
+    date.toLocaleDateString('es-PE', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    }) +
+    ' a las ' +
+    date.toLocaleTimeString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  )
+}
+
 export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = use(params)
   const supabase = createClient()
-  
+
   const [organization, setOrganization] = useState<PublicOrganization | null>(null)
   const [client, setClient] = useState<LoyaltyClient | null>(null)
   const [history, setHistory] = useState<(Sale & { items: SaleItem[] })[]>([])
+  const [clientPhone, setClientPhone] = useState('')
   const [clientName, setClientName] = useState('')
+  const [loginStep, setLoginStep] = useState<'phone' | 'register'>('phone')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load organization
+  const [services, setServices] = useState<Service[]>([])
+  const [employees, setEmployees] = useState<Profile[]>([])
+  const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [selectedEmployee, setSelectedEmployee] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [bookingSubmitting, setBookingSubmitting] = useState(false)
+  const [bookingSuccess, setBookingSuccess] = useState(false)
+  const [appointments, setAppointments] = useState<
+    (Appointment & { service?: Service; employee?: Profile })[]
+  >([])
+
   useEffect(() => {
     async function loadOrg() {
       const { data } = await supabase
@@ -37,14 +99,28 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         .select('id, name, logo_url')
         .eq('id', orgId)
         .single()
-      
+
       setOrganization(data)
+
+      const { data: servicesData } = await supabase
+        .from('services')
+        .select('*')
+        .eq('organization_id', orgId)
+
+      setServices(servicesData || [])
+
+      const { data: employeesData } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('organization_id', orgId)
+        .eq('role', 'employee')
+
+      setEmployees(employeesData || [])
       setLoading(false)
     }
     loadOrg()
   }, [orgId])
 
-  // Subscribe to realtime updates for client stamps
   useEffect(() => {
     if (!client) return
 
@@ -60,7 +136,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         },
         (payload) => {
           setClient(payload.new as LoyaltyClient)
-        }
+        },
       )
       .subscribe()
 
@@ -69,41 +145,84 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
     }
   }, [client?.id])
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
-    if (!clientName.trim()) return
-    
-    setSubmitting(true)
-    setError(null)
+  async function loadClientData(clientRecord: LoyaltyClient) {
+    setClient(clientRecord)
+    loadHistory(clientRecord.id)
 
-    // Try to find existing client
-    const { data: existingClient } = await supabase
+    const { data: appointmentsData } = await supabase
+      .from('appointments')
+      .select('*, service:services(*), employee:profiles(*)')
+      .eq('client_id', clientRecord.id)
+      .in('status', ['pendiente', 'confirmada'])
+      .order('appointment_time', { ascending: true })
+
+    setAppointments(appointmentsData || [])
+  }
+
+  async function findClientByPhone(phone: string) {
+    const normalized = normalizePhone(phone)
+
+    const { data } = await supabase
       .from('loyalty_clients')
       .select('*')
       .eq('organization_id', orgId)
-      .eq('name', clientName.trim())
-      .single()
+      .eq('phone', normalized)
+      .maybeSingle()
+
+    return data
+  }
+
+  async function handlePhoneLogin(e: React.FormEvent) {
+    e.preventDefault()
+    if (!clientPhone.trim()) return
+
+    if (!isValidPhone(clientPhone)) {
+      setError('Ingresa un número de celular válido (9 dígitos).')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+
+    const normalized = normalizePhone(clientPhone.trim())
+    const existingClient = await findClientByPhone(normalized)
 
     if (existingClient) {
-      setClient(existingClient)
-      loadHistory(existingClient.id)
+      await loadClientData(existingClient)
     } else {
-      // Create new client
-      const { data: newClient, error: createError } = await supabase
-        .from('loyalty_clients')
-        .insert({
-          name: clientName.trim(),
-          organization_id: orgId,
-          stamps: 0,
-        })
-        .select()
-        .single()
+      setLoginStep('register')
+    }
 
-      if (createError) {
-        setError('Failed to create account. Please try again.')
-      } else {
-        setClient(newClient)
-      }
+    setSubmitting(false)
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault()
+    if (!clientName.trim()) {
+      setError('Ingresa tu nombre para completar el registro.')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+
+    const normalized = normalizePhone(clientPhone.trim())
+
+    const { data: newClient, error: createError } = await supabase
+      .from('loyalty_clients')
+      .insert({
+        name: clientName.trim(),
+        phone: normalized,
+        organization_id: orgId,
+        stamps: 0,
+      })
+      .select()
+      .single()
+
+    if (createError) {
+      setError('No se pudo crear tu cuenta. Por favor intenta de nuevo.')
+    } else if (newClient) {
+      await loadClientData(newClient)
     }
 
     setSubmitting(false)
@@ -115,14 +234,99 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       .select('*, items:sale_items(*)')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
-    
+
     setHistory(historyData || [])
+  }
+
+  async function reloadAppointments(clientId: string) {
+    const { data: appointmentsData } = await supabase
+      .from('appointments')
+      .select('*, service:services(*), employee:profiles(*)')
+      .eq('client_id', clientId)
+      .in('status', ['pendiente', 'confirmada'])
+      .order('appointment_time', { ascending: true })
+
+    setAppointments(appointmentsData || [])
+  }
+
+  async function bookAppointment() {
+    if (!selectedService || !selectedEmployee || !selectedDate || !selectedTime || !client) {
+      setError('Por favor completa todos los campos')
+      return
+    }
+
+    setBookingSubmitting(true)
+    setError(null)
+
+    const appointmentTime = new Date(`${selectedDate}T${selectedTime}`)
+
+    const { data: newAppt, error: bookError } = await supabase
+      .from('appointments')
+      .insert({
+        organization_id: orgId,
+        client_id: client.id,
+        service_id: selectedService.id,
+        employee_id: selectedEmployee,
+        appointment_time: appointmentTime.toISOString(),
+        status: 'pendiente',
+      })
+      .select('id')
+      .single()
+
+    if (bookError) {
+      setError('No se pudo agendar la cita. Por favor intenta de nuevo.')
+    } else {
+      setBookingSuccess(true)
+
+      if (newAppt?.id) {
+        triggerBookingWhatsApp(newAppt.id, orgId).catch(() => {})
+      }
+
+      setTimeout(() => {
+        setSelectedService(null)
+        setSelectedEmployee('')
+        setSelectedDate('')
+        setSelectedTime('')
+        setBookingSuccess(false)
+        reloadAppointments(client.id)
+      }, 2000)
+    }
+
+    setBookingSubmitting(false)
   }
 
   function logout() {
     setClient(null)
     setHistory([])
+    setAppointments([])
+    setClientPhone('')
     setClientName('')
+    setLoginStep('phone')
+    setSelectedService(null)
+    setError(null)
+  }
+
+  function renderOrgLogo(size: 'lg' | 'sm' = 'lg') {
+    const sizeClass = size === 'lg' ? 'h-16 w-16' : 'h-10 w-10'
+    const iconSize = size === 'lg' ? 'h-8 w-8' : 'h-5 w-5'
+
+    if (organization?.logo_url) {
+      return (
+        <img
+          src={organization.logo_url}
+          alt={organization.name}
+          className={`${sizeClass} rounded-full object-cover`}
+        />
+      )
+    }
+
+    return (
+      <div
+        className={`${sizeClass} rounded-full bg-primary flex items-center justify-center ${size === 'lg' ? 'mx-auto mb-4' : ''}`}
+      >
+        <Scissors className={`${iconSize} text-primary-foreground`} />
+      </div>
+    )
   }
 
   if (loading) {
@@ -130,7 +334,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Cargando...</p>
         </div>
       </div>
     )
@@ -141,101 +345,138 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-6">
-            <p className="text-muted-foreground">Organization not found.</p>
+            <p className="text-muted-foreground">No se encontró la barbería.</p>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  // Login screen
   if (!client) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            {organization.logo_url ? (
-              <img
-                src={organization.logo_url}
-                alt={organization.name}
-                className="h-16 w-16 rounded-full mx-auto mb-4 object-cover"
-              />
-            ) : (
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-                <Scissors className="h-8 w-8 text-primary-foreground" />
-              </div>
-            )}
+            {renderOrgLogo('lg')}
             <CardTitle className="text-2xl">{organization.name}</CardTitle>
-            <CardDescription>Enter your name to view your loyalty card</CardDescription>
+            <CardDescription>
+              {loginStep === 'phone'
+                ? 'Ingresa tu celular para ver tu fidelidad y agendar citas'
+                : 'Completa tu registro para continuar'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              {error && (
-                <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                  {error}
+            {loginStep === 'phone' ? (
+              <form onSubmit={handlePhoneLogin} className="space-y-4">
+                {error && (
+                  <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md flex gap-2">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Tu celular / WhatsApp</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Ej. 987654321"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Usaremos este número para recordatorios y confirmaciones de tus citas.
+                  </p>
                 </div>
-              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Your Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Enter your name"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  required
-                />
-              </div>
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? 'Verificando...' : 'Continuar'}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-4">
+                {error && (
+                  <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md flex gap-2">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span>{error}</span>
+                  </div>
+                )}
 
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? 'Loading...' : 'View My Loyalty Card'}
-              </Button>
-            </form>
+                <div className="space-y-2">
+                  <Label htmlFor="phone-display">Celular</Label>
+                  <Input id="phone-display" type="tel" value={clientPhone} disabled />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Tu nombre</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Ingresa tu nombre"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setLoginStep('phone')
+                      setError(null)
+                    }}
+                  >
+                    Atrás
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={submitting}>
+                    {submitting ? 'Creando...' : 'Crear cuenta'}
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  // Client profile screen
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {organization.logo_url ? (
-              <img
-                src={organization.logo_url}
-                alt={organization.name}
-                className="h-10 w-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
-                <Scissors className="h-5 w-5 text-primary-foreground" />
-              </div>
-            )}
+            {renderOrgLogo('sm')}
             <div>
               <p className="font-semibold">{organization.name}</p>
-              <p className="text-sm text-muted-foreground">Welcome, {client.name}</p>
+              <p className="text-sm text-muted-foreground">Hola, {client.name}</p>
+              {client.phone && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {client.phone}
+                </p>
+              )}
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={logout}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Exit
+            Salir
           </Button>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-        {/* Loyalty Card */}
+      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        {/* Tarjeta de fidelidad */}
         <Card>
           <CardHeader className="text-center">
-            <CardTitle>Your Loyalty Card</CardTitle>
-            <CardDescription>
-              Collect 5 stamps for a free service!
-            </CardDescription>
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Heart className="h-5 w-5 text-primary" />
+              Tu tarjeta de fidelidad
+            </CardTitle>
+            <CardDescription>¡Junta 5 sellos y obtén un servicio gratis!</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-3 justify-center mb-6">
@@ -243,9 +484,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                 <div
                   key={i}
                   className={`h-14 w-14 rounded-full flex items-center justify-center transition-all ${
-                    i < client.stamps 
-                      ? 'bg-primary scale-110' 
-                      : 'bg-muted'
+                    i < client.stamps ? 'bg-primary scale-110' : 'bg-muted'
                   }`}
                 >
                   {i < client.stamps ? (
@@ -258,41 +497,42 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
             </div>
 
             <div className="text-center">
-              <p className="text-lg font-medium">
-                {client.stamps} of 5 stamps collected
-              </p>
+              <p className="text-lg font-medium">{client.stamps} de 5 sellos recogidos</p>
               <p className="text-sm text-muted-foreground">
-                {5 - client.stamps} more {5 - client.stamps === 1 ? 'stamp' : 'stamps'} until your free service!
+                {5 - client.stamps} sellos más para tu servicio gratis
               </p>
             </div>
 
             {client.stamps >= 5 && (
               <div className="mt-6 p-4 bg-green-100 dark:bg-green-900/20 rounded-lg text-center">
                 <Gift className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <p className="font-semibold text-green-700 dark:text-green-400">
-                  Congratulations!
-                </p>
+                <p className="font-semibold text-green-700 dark:text-green-400">¡Felicitaciones!</p>
                 <p className="text-sm text-green-600 dark:text-green-500">
-                  You have earned a free service. Tell the staff on your next visit!
+                  Has ganado un servicio gratis. ¡Avísale al staff en tu próxima visita!
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Available Coupons */}
+        {/* Cupones */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className={`p-3 rounded-full ${client.coupons > 0 ? 'bg-green-100' : 'bg-muted'}`}>
-                <Gift className={`h-6 w-6 ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`} />
+                <Gift
+                  className={`h-6 w-6 ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`}
+                />
               </div>
               <div>
-                <p className={`text-xl font-bold ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  {client.coupons} {client.coupons === 1 ? 'cupón disponible' : 'cupones disponibles'}
+                <p
+                  className={`text-xl font-bold ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`}
+                >
+                  {client.coupons}{' '}
+                  {client.coupons === 1 ? 'cupón disponible' : 'cupones disponibles'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {client.coupons > 0 
+                  {client.coupons > 0
                     ? 'Puedes canjear un servicio gratis en tu próxima visita'
                     : 'Completa 5 sellos para obtener un cupón'}
                 </p>
@@ -301,66 +541,156 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
           </CardContent>
         </Card>
 
-        {/* WhatsApp Phone Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-              </span>
-              Recordatorios por WhatsApp
-            </CardTitle>
-            <CardDescription>
-              Recibe un mensaje 30 minutos antes de tu cita y notificaciones de tus cupones.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {client.phone ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-                  <span className="font-medium">{client.phone}</span>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    // Solo limpia el state temporalmente para editar
-                    setClient({ ...client, phone: '' })
-                  }}>Editar</Button>
-                </div>
-                <p className="text-sm text-green-600 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Número guardado correctamente
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <Input 
-                    type="tel" 
-                    placeholder="Ej. +51987654321" 
-                    id="phone-input"
-                  />
-                  <Button onClick={async () => {
-                    const input = document.getElementById('phone-input') as HTMLInputElement
-                    if (!input.value) return
-                    const { error } = await supabase
-                      .from('loyalty_clients')
-                      .update({ phone: input.value })
-                      .eq('id', client.id)
-                    if (!error) {
-                      setClient({ ...client, phone: input.value })
-                    }
-                  }}>
-                    Guardar
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Citas activas */}
+        {appointments.length > 0 && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Tus citas activas</h2>
+            <div className="space-y-3">
+              {appointments.map((appointment) => (
+                <Card key={appointment.id} className="border-l-4 border-l-primary">
+                  <CardContent className="pt-6">
+                    <div className="space-y-2">
+                      <p className="font-semibold text-lg">{appointment.service?.name}</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>{formatDateTime(appointment.appointment_time)}</span>
+                      </div>
+                      {appointment.employee && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <User className="h-4 w-4" />
+                          <span>{appointment.employee.full_name}</span>
+                        </div>
+                      )}
+                      <div className="pt-2">
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            appointment.status === 'confirmada'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}
+                        >
+                          {appointment.status === 'confirmada' ? 'Confirmada' : 'Pendiente'}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* Service History */}
+        {/* Servicios y reservas */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Agendar cita</h2>
+          {services.length > 0 ? (
+            <ScrollArea className="h-auto md:h-[400px]">
+              <div className="grid gap-3 md:grid-cols-2 pr-4">
+                {services.map((service) => (
+                  <Dialog key={service.id}>
+                    <DialogTrigger asChild>
+                      <Card
+                        className="cursor-pointer hover:border-primary transition-colors"
+                        onClick={() => setSelectedService(service)}
+                      >
+                        <CardContent className="pt-6">
+                          <p className="font-semibold">{service.name}</p>
+                          <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
+                          <p className="text-lg font-bold text-primary">{formatCurrency(service.cost)}</p>
+                        </CardContent>
+                      </Card>
+                    </DialogTrigger>
+                    {selectedService?.id === service.id && (
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Agendar {service.name}</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          {error && (
+                            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md flex gap-2">
+                              <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                              <span>{error}</span>
+                            </div>
+                          )}
+
+                          {bookingSuccess && (
+                            <div className="p-3 text-sm text-green-600 bg-green-100 rounded-md">
+                              ¡Cita agendada exitosamente! Te enviaremos un WhatsApp de confirmación.
+                            </div>
+                          )}
+
+                          <div>
+                            <Label htmlFor="employee">Selecciona un barbero</Label>
+                            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                              <SelectTrigger className="mt-2">
+                                <SelectValue placeholder="Elige un barbero" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {employees.map((emp) => (
+                                  <SelectItem key={emp.id} value={emp.id}>
+                                    {emp.full_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="date">Fecha</Label>
+                            <Input
+                              id="date"
+                              type="date"
+                              value={selectedDate}
+                              onChange={(e) => setSelectedDate(e.target.value)}
+                              className="mt-2"
+                              min={new Date().toISOString().split('T')[0]}
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="time">Hora</Label>
+                            <Input
+                              id="time"
+                              type="time"
+                              value={selectedTime}
+                              onChange={(e) => setSelectedTime(e.target.value)}
+                              className="mt-2"
+                            />
+                          </div>
+
+                          <div className="flex gap-3 justify-end">
+                            <Button
+                              variant="outline"
+                              onClick={() => setSelectedService(null)}
+                              disabled={bookingSubmitting}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button onClick={bookAppointment} disabled={bookingSubmitting}>
+                              {bookingSubmitting ? 'Agendando...' : 'Agendar cita'}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    )}
+                  </Dialog>
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                No hay servicios disponibles en este momento.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Historial */}
         <Card>
           <CardHeader>
-            <CardTitle>Service History</CardTitle>
-            <CardDescription>Your visits and purchases</CardDescription>
+            <CardTitle>Historial de visitas</CardTitle>
+            <CardDescription>Tus servicios y compras anteriores</CardDescription>
           </CardHeader>
           <CardContent>
             {history.length > 0 ? (
@@ -403,7 +733,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
               </ScrollArea>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                No service history yet. Visit us to start earning stamps!
+                Aún no tienes visitas registradas. ¡Agenda tu primera cita!
               </p>
             )}
           </CardContent>
