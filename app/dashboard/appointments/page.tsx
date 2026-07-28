@@ -122,7 +122,7 @@ export default function AppointmentsPage() {
   ) {
     if (!appointment || !profile?.organization_id) return
 
-    const price = appointment.service?.price || 0
+    const price = appointment.service?.cost || 0
     const totalCommission = (appointment.service as any)?.commission || 0
 
     try {
