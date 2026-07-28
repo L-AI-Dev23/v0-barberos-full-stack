@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { loadUserProfile } from '@/lib/auth/profile-loader'
 
 export async function checkAndCreateCoupon(clientId: string, organizationId: string) {
   const supabase = await createClient()
@@ -75,6 +76,7 @@ export async function signUp(formData: FormData) {
       collaborators: true,
       pos: true,
       loyalty: true,
+      appointments: true,
       configuration: true,
     }
   } else if (invitationCode && invitationCode.trim()) {
@@ -185,44 +187,5 @@ export async function getCurrentUser() {
     return null
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, organizations(*)')
-    .eq('id', user.id)
-    .single()
-
-  // If profile exists but role is not set, determine it
-  if (profile && !profile.role && profile.organization_id) {
-    // Check if this is the first user of the organization
-    const { data: otherUsers } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('organization_id', profile.organization_id)
-      .neq('id', user.id)
-    
-    // If no other users, make this user admin
-    if (!otherUsers || otherUsers.length === 0) {
-      const { data: updatedProfile } = await supabase
-        .from('profiles')
-        .update({
-          role: 'admin',
-          module_permissions: {
-            dashboard: true,
-            services: true,
-            inventory: true,
-            collaborators: true,
-            pos: true,
-            loyalty: true,
-            configuration: true,
-          }
-        })
-        .eq('id', user.id)
-        .select('*, organizations(*)')
-        .single()
-      
-      return updatedProfile
-    }
-  }
-
-  return profile
+  return loadUserProfile(supabase, user.id)
 }

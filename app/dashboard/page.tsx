@@ -141,12 +141,11 @@ export default function DashboardPage() {
   
   // Redirect employees away from dashboard
   useEffect(() => {
-    if (!loading && profile && !isAdmin) {
+    if (!loading && profile && profile.role !== 'admin') {
       router.push('/dashboard/earnings')
     }
-  }, [profile, isAdmin, router, loading])
+  }, [profile, router, loading])
 
-  // Show loading while auth is loading
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -155,8 +154,15 @@ export default function DashboardPage() {
     )
   }
 
-  // If not admin, show nothing (redirect will happen via useEffect)
-  if (!isAdmin) {
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">No se pudo cargar tu perfil. Recarga la página.</p>
+      </div>
+    )
+  }
+
+  if (profile.role !== 'admin') {
     return null
   }
 

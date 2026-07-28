@@ -39,7 +39,7 @@ const employeeNavItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { profile, isAdmin, hasPermission } = useAuth()
+  const { user, profile, loading, isAdmin, hasPermission, refreshProfile } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const navItems = isAdmin
@@ -92,7 +92,19 @@ export function Sidebar() {
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-            {navItems.map((item) => {
+            {loading ? (
+              <p className="px-3 text-sm text-muted-foreground">Cargando menú...</p>
+            ) : user && !profile ? (
+              <div className="space-y-3 px-3">
+                <p className="text-sm text-muted-foreground">
+                  No se pudo cargar tu perfil.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => refreshProfile()}>
+                  Reintentar
+                </Button>
+              </div>
+            ) : (
+              navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
               
@@ -112,7 +124,8 @@ export function Sidebar() {
                   {item.label}
                 </Link>
               )
-            })}
+            })
+            )}
           </nav>
 
           {/* User info & logout */}
