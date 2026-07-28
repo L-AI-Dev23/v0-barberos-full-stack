@@ -64,6 +64,14 @@ export function AuthProvider({
   // de orden, solo se aplica la más reciente.
   const requestIdRef = useRef(0)
 
+  // Recuerda el userId ya autenticado en esta pestaña. GoTrueClient puede
+  // volver a emitir SIGNED_IN (en vez de TOKEN_REFRESHED) al recuperar el
+  // foco de la pestaña, sin que haya habido un logout real de por medio.
+  // Usamos esto para distinguir ese caso (mismo usuario) de un login nuevo
+  // de verdad (usuario distinto o primera vez), y así no volver a poner
+  // loading=true ni re-consultar el perfil innecesariamente.
+  const currentUserIdRef = useRef<string | null>(initialUser?.id ?? null)
+
   const fetchProfile = useCallback(async (userId: string) => {
     const requestId = ++requestIdRef.current
     const loadedProfile = await withTimeout(loadUserProfile(supabase, userId), 8000)
@@ -104,6 +112,7 @@ export function AuthProvider({
         if (!mounted) return
 
         setUser(currentUser)
+        currentUserIdRef.current = currentUser?.id ?? null
 
         if (currentUser) {
           setLoading(true)
@@ -126,6 +135,7 @@ export function AuthProvider({
         setUser(currentUser)
 
         if (event === 'SIGNED_OUT') {
+          currentUserIdRef.current = null
           setProfile(null)
           setLoading(false)
           return
@@ -140,7 +150,18 @@ export function AuthProvider({
         }
 
         if (currentUser && event === 'SIGNED_IN') {
-          // Login real (nuevo inicio de sesión).
+          // GoTrueClient puede reemitir SIGNED_IN al recuperar el foco de
+          // la pestaña (recuperación de sesión), aunque no haya habido
+          // logout real. Si es el MISMO usuario que ya teníamos, no es un
+          // login nuevo: no tocamos loading ni volvemos a pedir el perfil,
+          // así el sidebar y la página ya no "parpadean" al cambiar de
+          // pestaña, ni se bloquean botones que dependen de Supabase.
+          if (currentUserIdRef.current === currentUser.id) {
+            return
+          }
+
+          // Login real (usuario nuevo o primera vez en esta pestaña).
+          currentUserIdRef.current = currentUser.id
           setLoading(true)
           await fetchProfile(currentUser.id)
           setLoading(false)
