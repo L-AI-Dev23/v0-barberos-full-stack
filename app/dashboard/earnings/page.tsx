@@ -55,8 +55,7 @@ export default function EarningsPage() {
         .lte('created_at', range.end)
         .order('created_at', { ascending: false })
       return data || []
-    },
-    { revalidateOnFocus: true }
+    }
   )
 
   const totalEarnings = sales?.reduce((sum, sale) => sum + Number(sale.total_commission), 0) || 0
