@@ -93,11 +93,18 @@ export default function AppointmentsPage() {
   )
 
   async function updateStatus(appointmentId: string, newStatus: string) {
+    const appointment = appointments?.find(apt => apt.id === appointmentId)
+
     await supabase
       .from('appointments')
       .update({ status: newStatus })
       .eq('id', appointmentId)
-    
+
+    // Si se marca como completada, registrar el ingreso (venta) y el sello de fidelidad
+    if (newStatus === 'completada' && appointment?.status !== 'completada') {
+      await completeAppointmentSale(appointment)
+    }
+
     mutateAppointments()
 
     // Enviar notificación de WhatsApp (Cita Completada) en segundo plano
@@ -107,6 +114,65 @@ export default function AppointmentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ appointmentId, event: 'booking_completed' })
       }).catch(console.error);
+    }
+  }
+
+  async function completeAppointmentSale(
+    appointment?: (Appointment & { service: Service | null; employee: Profile | null; client?: any })
+  ) {
+    if (!appointment || !profile?.organization_id) return
+
+    const price = appointment.service?.price || 0
+    const totalCommission = (appointment.service as any)?.commission || 0
+
+    try {
+      // Crear la venta (esto es lo que alimenta los ingresos del negocio)
+      const { data: sale, error: saleError } = await supabase
+        .from('sales')
+        .insert({
+          organization_id: profile.organization_id,
+          employee_id: appointment.employee_id,
+          client_id: appointment.client_id,
+          total: price,
+          total_commission: totalCommission,
+        })
+        .select()
+        .single()
+
+      if (saleError) throw saleError
+
+      // Crear el item de la venta ligado al servicio de la cita
+      await supabase.from('sale_items').insert({
+        sale_id: sale.id,
+        item_type: 'service',
+        service_id: appointment.service_id,
+        product_id: null,
+        quantity: 1,
+        unit_price: price,
+        commission: totalCommission,
+      })
+
+      // Sumar un sello de fidelidad al cliente (si la cita tiene cliente asociado)
+      if (appointment.client_id && appointment.client) {
+        const totalStamps = appointment.client.stamps + 1
+        let additionalCoupons = 0
+        let finalStamps = totalStamps
+
+        if (totalStamps >= 5) {
+          additionalCoupons = Math.floor(totalStamps / 5)
+          finalStamps = totalStamps % 5
+        }
+
+        await supabase
+          .from('loyalty_clients')
+          .update({
+            stamps: finalStamps,
+            coupons: appointment.client.coupons + additionalCoupons,
+          })
+          .eq('id', appointment.client_id)
+      }
+    } catch (error) {
+      console.error('Error registrando venta/fidelidad de la cita:', error)
     }
   }
 
