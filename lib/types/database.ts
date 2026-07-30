@@ -151,6 +151,7 @@ export interface SaleItem {
   created_at: string
   service?: Service
   product?: Product
+  opcion_seleccionada?: string | null
 }
 
 export interface OrganizationQRCode {
@@ -185,4 +186,5 @@ export interface CartItem {
   quantity: number
   service?: Service
   product?: Product
+  selectedOption?: string | null
 }

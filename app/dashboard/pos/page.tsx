@@ -215,6 +215,9 @@ export default function POSPage() {
             : (item as Product).sale_price,
         commission: type === "service" ? (item as Service).commission : 0,
         quantity: 1,
+        selectedOption: type === "service" && (item as Service).opciones && (item as Service).opciones!.length > 0
+          ? (item as Service).opciones![0]
+          : null,
         ...(type === "service"
           ? { service: item as Service }
           : { product: item as Product }),
@@ -268,6 +271,7 @@ export default function POSPage() {
         quantity: item.quantity,
         unit_price: item.price,
         commission: item.commission,
+        opcion_seleccionada: item.type === "service" ? item.selectedOption : null,
       }));
 
       await supabase.from("sale_items").insert(saleItems);
@@ -406,13 +410,20 @@ export default function POSPage() {
               {filteredItems?.map((item) => (
                 <Card
                   key={item.id}
-                  className="cursor-pointer hover:border-primary transition-colors"
+                  className="cursor-pointer hover:border-primary transition-colors relative"
                   onClick={() =>
                     addToCart(item, mode === "services" ? "service" : "product")
                   }
                 >
                   <CardContent className="p-4">
-                    <p className="font-medium truncate">{item.name}</p>
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <p className="font-medium truncate flex-1">{item.name}</p>
+                      {mode === "services" && (item as Service).opciones && (item as Service).opciones!.length > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                          {(item as Service).opciones!.length} {(item as Service).opciones!.length === 1 ? 'opción' : 'opciones'}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-lg font-bold text-primary">
                       {formatCurrency(
                         mode === "services"
@@ -567,6 +578,39 @@ export default function POSPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Option selector for services in cart */}
+            {cart.map((cartItem, index) => {
+              if (cartItem.type === "service" && cartItem.service?.opciones && cartItem.service.opciones.length > 0) {
+                return (
+                  <div key={`opt-${cartItem.id}-${index}`} className="space-y-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">
+                      Opción de estilo para {cartItem.name}
+                    </Label>
+                    <Select
+                      value={cartItem.selectedOption || ""}
+                      onValueChange={(val) => {
+                        const newCart = [...cart];
+                        newCart[index].selectedOption = val;
+                        setCart(newCart);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una opción" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cartItem.service.opciones.map((opt) => (
+                          <SelectItem key={opt} value={opt}>
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              }
+              return null;
+            })}
 
             <div className="pt-2 border-t">
               <div className="flex justify-between text-sm mb-1">

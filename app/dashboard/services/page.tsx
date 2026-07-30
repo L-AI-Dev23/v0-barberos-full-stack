@@ -151,8 +151,13 @@ export default function ServicesPage() {
 
   async function handleDeleteService(id: string) {
     if (!confirm('Delete this service?')) return
-    await supabase.from('services').delete().eq('id', id)
-    mutateServices()
+    const { error } = await supabase.from('services').delete().eq('id', id)
+    if (error) {
+      console.error('Error deleting service:', error)
+      alert(`No se pudo eliminar el servicio: ${error.message}`)
+    } else {
+      mutateServices()
+    }
   }
 
   function resetServiceForm() {
