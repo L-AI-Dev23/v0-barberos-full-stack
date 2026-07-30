@@ -52,6 +52,7 @@ function formatTime(dateStr: string) {
 export default function AppointmentsPage() {
   const { profile, isAdmin } = useAuth()
   const supabase = createClient()
+  const [view, setView] = useState<'activas' | 'historial'>('activas')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -68,7 +69,7 @@ export default function AppointmentsPage() {
     employee: Profile | null
     client?: any
   })[]>(
-    profile?.organization_id ? `appointments-${statusFilter}-${search}` : null,
+    profile?.organization_id ? `appointments-${view}-${statusFilter}-${search}` : null,
     async () => {
       let query = supabase
         .from('appointments')
@@ -76,8 +77,14 @@ export default function AppointmentsPage() {
         .eq('organization_id', profile!.organization_id)
         .order('appointment_time', { ascending: true })
 
-      if (statusFilter !== 'all') {
+      if (view === 'historial') {
+        // El historial solo muestra las citas ya completadas
+        query = query.eq('status', 'completada')
+      } else if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
+      } else {
+        // Las citas completadas se mueven automáticamente al historial
+        query = query.neq('status', 'completada')
       }
 
       const { data } = await query
@@ -236,15 +243,28 @@ export default function AppointmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Citas</h1>
-          <p className="text-muted-foreground">Gestiona las citas de tus clientes</p>
+          <h1 className="text-2xl font-bold">{view === 'historial' ? 'Historial de citas' : 'Citas'}</h1>
+          <p className="text-muted-foreground">
+            {view === 'historial'
+              ? 'Citas que ya fueron completadas'
+              : 'Gestiona las citas de tus clientes'}
+          </p>
         </div>
-        {isAdmin && (
-          <Button onClick={generateQR} disabled={generating}>
-            <QrCode className="h-4 w-4 mr-2" />
-            {generating ? 'Generando...' : 'Generar código QR'}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={view === 'historial' ? 'default' : 'outline'}
+            onClick={() => setView(view === 'historial' ? 'activas' : 'historial')}
+          >
+            <Clock className="h-4 w-4 mr-2" />
+            {view === 'historial' ? 'Ver citas activas' : 'Historial'}
           </Button>
-        )}
+          {isAdmin && (
+            <Button onClick={generateQR} disabled={generating}>
+              <QrCode className="h-4 w-4 mr-2" />
+              {generating ? 'Generando...' : 'Generar código QR'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* QR Code Display */}
@@ -284,18 +304,19 @@ export default function AppointmentsPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1"
         />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-48">
-            <SelectValue placeholder="Filtrar por estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los estados</SelectItem>
-            <SelectItem value="pendiente">Pendiente</SelectItem>
-            <SelectItem value="confirmada">Confirmada</SelectItem>
-            <SelectItem value="completada">Completada</SelectItem>
-            <SelectItem value="cancelada">Cancelada</SelectItem>
-          </SelectContent>
-        </Select>
+        {view === 'activas' && (
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="Filtrar por estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="pendiente">Pendiente</SelectItem>
+              <SelectItem value="confirmada">Confirmada</SelectItem>
+              <SelectItem value="cancelada">Cancelada</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Appointments List */}
@@ -421,7 +442,9 @@ export default function AppointmentsPage() {
           ) : (
             <div className="col-span-full text-center py-12">
               <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No hay citas registradas</p>
+              <p className="text-muted-foreground">
+                {view === 'historial' ? 'Aún no hay citas completadas' : 'No hay citas registradas'}
+              </p>
             </div>
           )}
         </div>

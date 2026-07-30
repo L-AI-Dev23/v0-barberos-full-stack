@@ -84,7 +84,6 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   const [employees, setEmployees] = useState<Profile[]>([])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedEmployee, setSelectedEmployee] = useState('')
-  const [selectedOption, setSelectedOption] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [bookingSubmitting, setBookingSubmitting] = useState(false)
@@ -270,7 +269,6 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         employee_id: selectedEmployee || null,
         appointment_time: appointmentTime.toISOString(),
         status: 'pendiente',
-        opcion_seleccionada: selectedOption || null,
       })
       .select('id')
       .single()
@@ -281,13 +279,12 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       setBookingSuccess(true)
 
       if (newAppt?.id) {
-        triggerBookingWhatsApp(newAppt.id, orgId).catch(() => {})
+        triggerBookingWhatsApp(newAppt.id, orgId).catch(() => { })
       }
 
       setTimeout(() => {
         setSelectedService(null)
         setSelectedEmployee('')
-        setSelectedOption('')
         setSelectedDate('')
         setSelectedTime('')
         setBookingSuccess(false)
@@ -486,9 +483,8 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
               {[0, 1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className={`h-14 w-14 rounded-full flex items-center justify-center transition-all ${
-                    i < client.stamps ? 'bg-primary scale-110' : 'bg-muted'
-                  }`}
+                  className={`h-14 w-14 rounded-full flex items-center justify-center transition-all ${i < client.stamps ? 'bg-primary scale-110' : 'bg-muted'
+                    }`}
                 >
                   {i < client.stamps ? (
                     <Heart className="h-7 w-7 text-primary-foreground fill-current" />
@@ -566,11 +562,10 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                       )}
                       <div className="pt-2">
                         <span
-                          className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            appointment.status === 'confirmada'
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${appointment.status === 'confirmada'
                               ? 'bg-green-100 text-green-700'
                               : 'bg-yellow-100 text-yellow-700'
-                          }`}
+                            }`}
                         >
                           {appointment.status === 'confirmada' ? 'Confirmada' : 'Pendiente'}
                         </span>
@@ -594,20 +589,10 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                     <DialogTrigger asChild>
                       <Card
                         className="cursor-pointer hover:border-primary transition-colors"
-                        onClick={() => {
-                          setSelectedService(service)
-                          setSelectedOption(service.opciones && service.opciones.length > 0 ? service.opciones[0] : '')
-                        }}
+                        onClick={() => setSelectedService(service)}
                       >
                         <CardContent className="pt-6">
-                          <div className="flex items-start justify-between gap-1 mb-1">
-                            <p className="font-semibold flex-1">{service.name}</p>
-                            {service.opciones && service.opciones.length > 0 && (
-                              <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
-                                {service.opciones.length} {service.opciones.length === 1 ? 'opción' : 'opciones'}
-                              </span>
-                            )}
-                          </div>
+                          <p className="font-semibold">{service.name}</p>
                           <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
                           <p className="text-lg font-bold text-primary">{formatCurrency(service.cost)}</p>
                         </CardContent>
@@ -651,27 +636,6 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                               </SelectContent>
                             </Select>
                           </div>
-
-                          {service.opciones && service.opciones.length > 0 && (
-                            <div>
-                              <Label>Opción de estilo</Label>
-                              <Select
-                                value={selectedOption}
-                                onValueChange={setSelectedOption}
-                              >
-                                <SelectTrigger className="mt-2">
-                                  <SelectValue placeholder="Selecciona una opción" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {service.opciones.map((opt) => (
-                                    <SelectItem key={opt} value={opt}>
-                                      {opt}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
 
                           <div>
                             <Label htmlFor="date">Fecha</Label>
