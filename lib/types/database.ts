@@ -88,6 +88,8 @@ export interface Service {
   created_at: string
   updated_at: string
   category?: ServiceCategory
+  incluye?: string | null
+  imagen?: string | null
 }
 
 export interface ProductCategory {

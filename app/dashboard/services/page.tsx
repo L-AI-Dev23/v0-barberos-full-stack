@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, MoreVertical, Pencil, Trash2, FolderPlus } from 'lucide-react'
+import { Plus, MoreVertical, Pencil, Trash2, FolderPlus, Sparkles } from 'lucide-react'
 import type { Service, ServiceCategory } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
@@ -54,6 +54,8 @@ export default function ServicesPage() {
   const [serviceCost, setServiceCost] = useState('')
   const [serviceCommission, setServiceCommission] = useState('')
   const [serviceCategoryId, setServiceCategoryId] = useState<string>('')
+  const [serviceIncluye, setServiceIncluye] = useState('')
+  const [serviceImagen, setServiceImagen] = useState('')
   const [saving, setSaving] = useState(false)
 
   const { data: categories, mutate: mutateCategories } = useSWR<ServiceCategory[]>(
@@ -122,6 +124,8 @@ export default function ServicesPage() {
       commission: parseFloat(serviceCommission),
       category_id: serviceCategoryId || null,
       organization_id: profile.organization_id,
+      incluye: serviceIncluye.trim() || null,
+      imagen: serviceImagen.trim() || null,
     }
 
     if (editingService) {
@@ -151,6 +155,8 @@ export default function ServicesPage() {
     setServiceCost('')
     setServiceCommission('')
     setServiceCategoryId('')
+    setServiceIncluye('')
+    setServiceImagen('')
     setEditingService(null)
   }
 
@@ -167,6 +173,8 @@ export default function ServicesPage() {
     setServiceCost(svc.cost.toString())
     setServiceCommission(svc.commission.toString())
     setServiceCategoryId(svc.category_id || '')
+    setServiceIncluye(svc.incluye || '')
+    setServiceImagen(svc.imagen || '')
     setServiceModalOpen(true)
   }
 
@@ -245,7 +253,7 @@ export default function ServicesPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label>Costo (S/) *</Label>
+                      <Label>Precio (S/) *</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -285,6 +293,22 @@ export default function ServicesPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Incluye (Servicios adicionales / interno)</Label>
+                    <Input
+                      placeholder="ej., Lavado de cabello, Toalla caliente"
+                      value={serviceIncluye}
+                      onChange={(e) => setServiceIncluye(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>URL de la Imagen</Label>
+                    <Input
+                      placeholder="ej., https://images.unsplash.com/..."
+                      value={serviceImagen}
+                      onChange={(e) => setServiceImagen(e.target.value)}
+                    />
                   </div>
                   <Button 
                     onClick={handleSaveService} 
@@ -329,24 +353,42 @@ export default function ServicesPage() {
       )}
 
       {/* Services Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {services?.map((service) => (
-          <Card key={service.id}>
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+          <Card key={service.id} className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border border-border/80">
+            {/* Header Image or Premium Fallback */}
+            <div className="h-44 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
+              {service.imagen ? (
+                <img
+                  src={service.imagen}
+                  alt={service.name}
+                  className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex flex-col items-center justify-center gap-2">
+                  <Sparkles className="h-8 w-8 text-violet-500/40 animate-pulse" />
+                  <span className="text-xs text-muted-foreground/40 font-semibold tracking-widest uppercase select-none">BarberOS</span>
+                </div>
+              )}
+            </div>
+
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
               <div>
-                <CardTitle className="text-lg">{service.name}</CardTitle>
+                <CardTitle className="text-lg font-bold text-foreground">{service.name}</CardTitle>
                 {service.category && (
-                  <p className="text-xs text-muted-foreground">{service.category.name}</p>
+                  <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-0.5 text-xs font-semibold text-violet-600 dark:text-violet-400 mt-1">
+                    {service.category.name}
+                  </span>
                 )}
               </div>
               {isAdmin && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted/80">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => openEditService(service)}>
                       <Pencil className="h-4 w-4 mr-2" /> Editar
                     </DropdownMenuItem>
@@ -357,22 +399,31 @@ export default function ServicesPage() {
                 </DropdownMenu>
               )}
             </CardHeader>
-            <CardContent>
-              {service.description && (
-                <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
-              )}
-              <div className="grid grid-cols-3 gap-2 text-sm">
+            <CardContent className="flex-1 flex flex-col justify-between pt-2 pb-5">
+              <div className="space-y-4">
+                {service.description && (
+                  <p className="text-sm text-muted-foreground/90 leading-relaxed line-clamp-2">{service.description}</p>
+                )}
+                {service.incluye && (
+                  <div className="text-xs bg-muted/60 p-3 rounded-lg border border-border/50">
+                    <p className="font-bold text-[10px] text-violet-600/80 dark:text-violet-400/80 uppercase tracking-widest mb-1">Incluye</p>
+                    <p className="text-foreground/90 italic font-medium">{service.incluye}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2 text-sm pt-4 border-t border-border/60 mt-5">
                 <div>
-                  <p className="text-muted-foreground">Costo</p>
-                  <p className="font-medium">{formatCurrency(service.cost)}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Precio</p>
+                  <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(service.cost)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Comisión</p>
-                  <p className="font-medium">{formatCurrency(service.commission)}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Comisión</p>
+                  <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(service.commission)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Ganancia</p>
-                  <p className="font-medium text-green-600">{formatCurrency(service.cost - service.commission)}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ganancia</p>
+                  <p className="font-extrabold text-green-600 dark:text-green-500 text-[15px] mt-0.5">{formatCurrency(service.cost - service.commission)}</p>
                 </div>
               </div>
             </CardContent>
