@@ -56,6 +56,7 @@ export default function ServicesPage() {
   const [serviceCategoryId, setServiceCategoryId] = useState<string>('')
   const [serviceIncluye, setServiceIncluye] = useState('')
   const [serviceImagen, setServiceImagen] = useState('')
+  const [serviceOpciones, setServiceOpciones] = useState('')
   const [saving, setSaving] = useState(false)
 
   const { data: categories, mutate: mutateCategories } = useSWR<ServiceCategory[]>(
@@ -117,6 +118,10 @@ export default function ServicesPage() {
     if (!profile?.organization_id || !serviceName.trim() || !serviceCost || !serviceCommission) return
     setSaving(true)
 
+    const opcionesArray = serviceOpciones.trim()
+      ? serviceOpciones.split(',').map(o => o.trim()).filter(Boolean)
+      : null
+
     const serviceData = {
       name: serviceName.trim(),
       description: serviceDescription.trim() || null,
@@ -126,6 +131,7 @@ export default function ServicesPage() {
       organization_id: profile.organization_id,
       incluye: serviceIncluye.trim() || null,
       imagen: serviceImagen.trim() || null,
+      opciones: opcionesArray,
     }
 
     if (editingService) {
@@ -157,6 +163,7 @@ export default function ServicesPage() {
     setServiceCategoryId('')
     setServiceIncluye('')
     setServiceImagen('')
+    setServiceOpciones('')
     setEditingService(null)
   }
 
@@ -175,6 +182,7 @@ export default function ServicesPage() {
     setServiceCategoryId(svc.category_id || '')
     setServiceIncluye(svc.incluye || '')
     setServiceImagen(svc.imagen || '')
+    setServiceOpciones(svc.opciones ? svc.opciones.join(', ') : '')
     setServiceModalOpen(true)
   }
 
@@ -303,6 +311,14 @@ export default function ServicesPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label>Opciones (separadas por comas)</Label>
+                    <Input
+                      placeholder="ej., Low, Mid, High"
+                      value={serviceOpciones}
+                      onChange={(e) => setServiceOpciones(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>URL de la Imagen</Label>
                     <Input
                       placeholder="ej., https://images.unsplash.com/..."
@@ -355,9 +371,9 @@ export default function ServicesPage() {
       {/* Services Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {services?.map((service) => (
-          <Card key={service.id} className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border border-border/80">
+          <Card key={service.id} className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border border-border/80 p-0 py-0 pt-0 pb-0 gap-0">
             {/* Header Image or Premium Fallback */}
-            <div className="h-44 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
+            <div className="h-60 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
               {service.imagen ? (
                 <img
                   src={service.imagen}
@@ -372,35 +388,41 @@ export default function ServicesPage() {
               )}
             </div>
 
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4">
-              <div>
-                <CardTitle className="text-lg font-bold text-foreground">{service.name}</CardTitle>
-                {service.category && (
-                  <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-0.5 text-xs font-semibold text-violet-600 dark:text-violet-400 mt-1">
-                    {service.category.name}
-                  </span>
-                )}
-              </div>
-              {isAdmin && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted/80">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openEditService(service)}>
-                      <Pencil className="h-4 w-4 mr-2" /> Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDeleteService(service.id)} className="text-destructive">
-                      <Trash2 className="h-4 w-4 mr-2" /> Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col justify-between pt-2 pb-5">
-              <div className="space-y-4">
+            <div className="px-5 pt-4 pb-5 flex-1 flex flex-col justify-between gap-3">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                    <CardTitle className="text-lg font-bold text-foreground mr-1 truncate">{service.name}</CardTitle>
+                    {service.category && (
+                      <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0">
+                        {service.category.name}
+                      </span>
+                    )}
+                    {service.opciones && service.opciones.length > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                        {service.opciones.length} {service.opciones.length === 1 ? 'opción' : 'opciones'}
+                      </span>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted/80 shrink-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditService(service)}>
+                          <Pencil className="h-4 w-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeleteService(service.id)} className="text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" /> Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+
                 {service.description && (
                   <p className="text-sm text-muted-foreground/90 leading-relaxed line-clamp-2">{service.description}</p>
                 )}
@@ -412,7 +434,7 @@ export default function ServicesPage() {
                 )}
               </div>
               
-              <div className="grid grid-cols-3 gap-2 text-sm pt-4 border-t border-border/60 mt-5">
+              <div className="grid grid-cols-3 gap-2 text-sm pt-4 border-t border-border/60">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Precio</p>
                   <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(service.cost)}</p>
@@ -426,7 +448,7 @@ export default function ServicesPage() {
                   <p className="font-extrabold text-green-600 dark:text-green-500 text-[15px] mt-0.5">{formatCurrency(service.cost - service.commission)}</p>
                 </div>
               </div>
-            </CardContent>
+            </div>
           </Card>
         ))}
       </div>

@@ -90,6 +90,7 @@ export interface Service {
   category?: ServiceCategory
   incluye?: string | null
   imagen?: string | null
+  opciones?: string[] | null
 }
 
 export interface ProductCategory {
