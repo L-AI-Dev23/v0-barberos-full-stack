@@ -311,6 +311,11 @@ export default function AppointmentsPage() {
                       <div className="flex-1">
                         <CardTitle className="text-lg">{apt.service?.name}</CardTitle>
                         <CardDescription>{apt.service?.description}</CardDescription>
+                        {apt.opcion_seleccionada && (
+                          <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 mt-1 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                            {apt.opcion_seleccionada}
+                          </span>
+                        )}
                       </div>
                       <Badge className={config.color}>
                         {config.label}

@@ -84,6 +84,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   const [employees, setEmployees] = useState<Profile[]>([])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedEmployee, setSelectedEmployee] = useState('')
+  const [selectedOption, setSelectedOption] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [bookingSubmitting, setBookingSubmitting] = useState(false)
@@ -269,6 +270,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         employee_id: selectedEmployee || null,
         appointment_time: appointmentTime.toISOString(),
         status: 'pendiente',
+        opcion_seleccionada: selectedOption || null,
       })
       .select('id')
       .single()
@@ -285,6 +287,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       setTimeout(() => {
         setSelectedService(null)
         setSelectedEmployee('')
+        setSelectedOption('')
         setSelectedDate('')
         setSelectedTime('')
         setBookingSuccess(false)
@@ -591,10 +594,20 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                     <DialogTrigger asChild>
                       <Card
                         className="cursor-pointer hover:border-primary transition-colors"
-                        onClick={() => setSelectedService(service)}
+                        onClick={() => {
+                          setSelectedService(service)
+                          setSelectedOption(service.opciones && service.opciones.length > 0 ? service.opciones[0] : '')
+                        }}
                       >
                         <CardContent className="pt-6">
-                          <p className="font-semibold">{service.name}</p>
+                          <div className="flex items-start justify-between gap-1 mb-1">
+                            <p className="font-semibold flex-1">{service.name}</p>
+                            {service.opciones && service.opciones.length > 0 && (
+                              <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                                {service.opciones.length} {service.opciones.length === 1 ? 'opción' : 'opciones'}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
                           <p className="text-lg font-bold text-primary">{formatCurrency(service.cost)}</p>
                         </CardContent>
@@ -638,6 +651,27 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                               </SelectContent>
                             </Select>
                           </div>
+
+                          {service.opciones && service.opciones.length > 0 && (
+                            <div>
+                              <Label>Opción de estilo</Label>
+                              <Select
+                                value={selectedOption}
+                                onValueChange={setSelectedOption}
+                              >
+                                <SelectTrigger className="mt-2">
+                                  <SelectValue placeholder="Selecciona una opción" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {service.opciones.map((opt) => (
+                                    <SelectItem key={opt} value={opt}>
+                                      {opt}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
 
                           <div>
                             <Label htmlFor="date">Fecha</Label>

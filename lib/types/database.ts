@@ -175,6 +175,7 @@ export interface Appointment {
   client?: LoyaltyClient
   service?: Service
   employee?: Profile
+  opcion_seleccionada?: string | null
 }
 
 export interface CartItem {
