@@ -22,7 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { UserPlus, Copy, Check, User, Calendar, Trash2, X } from 'lucide-react'
+import { UserPlus, Copy, Check, Calendar, Trash2, Sparkles } from 'lucide-react'
 import type { Profile, InvitationCode, ModulePermissions } from '@/lib/types/database'
 
 const MODULES = [
@@ -254,33 +254,51 @@ export default function CollaboratorsPage() {
       )}
 
       {/* Employees Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {employees?.map((emp) => (
-          <Card 
-            key={emp.id} 
-            className="cursor-pointer hover:border-primary transition-colors"
+          <Card
+            key={emp.id}
+            className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border border-border/80 p-0 py-0 pt-0 pb-0 gap-0 cursor-pointer"
             onClick={() => isAdmin && openEmployeeSheet(emp)}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                  <User className="h-6 w-6 text-muted-foreground" />
+            {/* Header Image or Premium Fallback */}
+            <div className="h-60 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
+              {emp.avatar_url ? (
+                <img
+                  src={emp.avatar_url}
+                  alt={emp.full_name}
+                  className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex flex-col items-center justify-center gap-2">
+                  <Sparkles className="h-8 w-8 text-violet-500/40 animate-pulse" />
+                  <span className="text-xs text-muted-foreground/40 font-semibold tracking-widest uppercase select-none">BarberOS</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{emp.full_name}</p>
-                  <p className="text-sm text-muted-foreground truncate">{emp.email}</p>
+              )}
+            </div>
+
+            <div className="px-5 pt-4 pb-5 flex-1 flex flex-col justify-between gap-3">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                    <CardTitle className="text-lg font-semibold text-foreground mr-1 truncate">{emp.full_name}</CardTitle>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(emp.module_permissions || {})
+                    .filter(([, v]) => v)
+                    .map(([k]) => (
+                      <span key={k} className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0">
+                        {MODULES.find(m => m.key === k)?.label}
+                      </span>
+                    ))}
+                  {Object.entries(emp.module_permissions || {}).filter(([, v]) => v).length === 0 && (
+                    <span className="text-xs text-muted-foreground/60 italic">Sin módulos asignados</span>
+                  )}
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-1">
-                {Object.entries(emp.module_permissions || {})
-                  .filter(([, v]) => v)
-                  .map(([k]) => (
-                    <span key={k} className="text-xs bg-muted px-2 py-0.5 rounded">
-                      {MODULES.find(m => m.key === k)?.label}
-                    </span>
-                  ))}
-              </div>
-            </CardContent>
+            </div>
           </Card>
         ))}
       </div>

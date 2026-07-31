@@ -19,6 +19,7 @@ import {
   LogOut,
   Menu,
   X,
+  UserCircle2,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -35,6 +36,7 @@ const adminNavItems = [
 
 const employeeNavItems = [
   { href: '/dashboard/earnings', label: 'Ganancias', icon: Wallet, permission: null },
+  { href: '/dashboard/profile', label: 'Perfil', icon: UserCircle2, permission: null },
 ]
 
 export function Sidebar() {
