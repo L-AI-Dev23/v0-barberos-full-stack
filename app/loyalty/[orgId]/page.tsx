@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
   DialogContent,
@@ -23,13 +26,14 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Scissors,
-  Calendar,
-  User,
   Heart,
   ArrowLeft,
   AlertCircle,
   Gift,
   Phone,
+  Clock,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react'
 import type {
   PublicOrganization,
@@ -64,6 +68,23 @@ function formatDateTime(dateStr: string) {
       minute: '2-digit',
     })
   )
+}
+
+function generateTimeSlots(startHour = 9, endHour = 19, stepMinutes = 30) {
+  const slots: string[] = []
+  for (let h = startHour; h < endHour; h++) {
+    for (let m = 0; m < 60; m += stepMinutes) {
+      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    }
+  }
+  return slots
+}
+
+function formatTimeLabel(time: string) {
+  const [h, m] = time.split(':').map(Number)
+  const period = h >= 12 ? 'p. m.' : 'a. m.'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`
 }
 
 export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId: string }> }) {
@@ -446,89 +467,111 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {renderOrgLogo('sm')}
+      {/* Hero */}
+      <header className="border-b bg-gradient-to-b from-primary/5 to-transparent">
+        <div className="max-w-2xl mx-auto px-4 pt-8 pb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Phone className="h-3.5 w-3.5" />
+              {client.phone}
+            </div>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Salir
+            </Button>
+          </div>
+
+          <div className="flex flex-col items-center text-center gap-3">
+            {renderOrgLogo('lg')}
             <div>
-              <p className="font-semibold">{organization.name}</p>
-              <p className="text-sm text-muted-foreground">Hola, {client.name}</p>
-              {client.phone && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Phone className="h-3 w-3" />
-                  {client.phone}
-                </p>
-              )}
+              <h1 className="text-2xl font-bold">{organization.name}</h1>
+              <p className="text-muted-foreground">Hola, {client.name} 👋</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={logout}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Salir
-          </Button>
+
+          {/* Citas activas como chips */}
+          {appointments.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto mt-6 pb-1 -mx-4 px-4">
+              {appointments.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="flex items-center gap-2 shrink-0 rounded-full border bg-card pl-3 pr-4 py-2 shadow-sm"
+                >
+                  <Clock className="h-4 w-4 text-primary shrink-0" />
+                  <div className="text-left">
+                    <p className="text-sm font-medium leading-none">{appointment.service?.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatDateTime(appointment.appointment_time)}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={appointment.status === 'confirmada' ? 'default' : 'secondary'}
+                    className="ml-1 shrink-0"
+                  >
+                    {appointment.status === 'confirmada' ? 'Confirmada' : 'Pendiente'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        {/* Tarjeta de fidelidad */}
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="flex items-center justify-center gap-2">
+      <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+        {/* Fidelidad + cupones en una sola tarjeta */}
+        <Card className="overflow-hidden">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center gap-2 mb-1">
               <Heart className="h-5 w-5 text-primary" />
-              Tu tarjeta de fidelidad
-            </CardTitle>
-            <CardDescription>¡Junta 5 sellos y obtén un servicio gratis!</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-3 justify-center mb-6">
+              <h2 className="font-semibold text-lg">Tu tarjeta de fidelidad</h2>
+            </div>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              ¡Junta 5 sellos y obtén un servicio gratis!
+            </p>
+
+            <div className="flex gap-3 justify-center mb-4">
               {[0, 1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className={`h-14 w-14 rounded-full flex items-center justify-center transition-all ${i < client.stamps ? 'bg-primary scale-110' : 'bg-muted'
+                  className={`h-12 w-12 sm:h-14 sm:w-14 rounded-full flex items-center justify-center transition-all ${i < client.stamps ? 'bg-primary scale-110' : 'bg-muted'
                     }`}
                 >
-                  {i < client.stamps ? (
-                    <Heart className="h-7 w-7 text-primary-foreground fill-current" />
-                  ) : (
-                    <Heart className="h-7 w-7 text-muted-foreground" />
-                  )}
+                  <Heart
+                    className={`h-6 w-6 sm:h-7 sm:w-7 ${i < client.stamps ? 'text-primary-foreground fill-current' : 'text-muted-foreground'
+                      }`}
+                  />
                 </div>
               ))}
             </div>
 
             <div className="text-center">
-              <p className="text-lg font-medium">{client.stamps} de 5 sellos recogidos</p>
+              <p className="font-medium">{client.stamps} de 5 sellos recogidos</p>
               <p className="text-sm text-muted-foreground">
-                {5 - client.stamps} sellos más para tu servicio gratis
+                {5 - client.stamps > 0
+                  ? `${5 - client.stamps} sellos más para tu servicio gratis`
+                  : '¡Ya completaste tu tarjeta!'}
               </p>
             </div>
 
             {client.stamps >= 5 && (
-              <div className="mt-6 p-4 bg-green-100 dark:bg-green-900/20 rounded-lg text-center">
-                <Gift className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <p className="font-semibold text-green-700 dark:text-green-400">¡Felicitaciones!</p>
-                <p className="text-sm text-green-600 dark:text-green-500">
+              <div className="mt-6 p-4 bg-primary/10 rounded-xl text-center">
+                <Gift className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="font-semibold">¡Felicitaciones!</p>
+                <p className="text-sm text-muted-foreground">
                   Has ganado un servicio gratis. ¡Avísale al staff en tu próxima visita!
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Cupones */}
-        <Card>
-          <CardContent className="pt-6">
+            <Separator className="my-6" />
+
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-full ${client.coupons > 0 ? 'bg-green-100' : 'bg-muted'}`}>
-                <Gift
-                  className={`h-6 w-6 ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`}
-                />
+              <div className={`p-3 rounded-full ${client.coupons > 0 ? 'bg-primary/10' : 'bg-muted'}`}>
+                <Gift className={`h-6 w-6 ${client.coupons > 0 ? 'text-primary' : 'text-muted-foreground'}`} />
               </div>
               <div>
-                <p
-                  className={`text-xl font-bold ${client.coupons > 0 ? 'text-green-600' : 'text-muted-foreground'}`}
-                >
-                  {client.coupons}{' '}
-                  {client.coupons === 1 ? 'cupón disponible' : 'cupones disponibles'}
+                <p className={`text-lg font-bold ${client.coupons > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {client.coupons} {client.coupons === 1 ? 'cupón disponible' : 'cupones disponibles'}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {client.coupons > 0
@@ -540,103 +583,89 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
           </CardContent>
         </Card>
 
-        {/* Citas activas */}
-        {appointments.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Tus citas activas</h2>
-            <div className="space-y-3">
-              {appointments.map((appointment) => (
-                <Card key={appointment.id} className="border-l-4 border-l-primary">
-                  <CardContent className="pt-6">
-                    <div className="space-y-2">
-                      <p className="font-semibold text-lg">{appointment.service?.name}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>{formatDateTime(appointment.appointment_time)}</span>
-                      </div>
-                      {appointment.employee && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <User className="h-4 w-4" />
-                          <span>{appointment.employee.full_name}</span>
-                        </div>
-                      )}
-                      <div className="pt-2">
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full font-medium ${appointment.status === 'confirmada'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                            }`}
-                        >
-                          {appointment.status === 'confirmada' ? 'Confirmada' : 'Pendiente'}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Servicios y reservas */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Agendar cita</h2>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold">Agendar cita</h2>
+            <p className="text-sm text-muted-foreground">Elige un servicio para reservar tu próxima visita</p>
+          </div>
+
           {services.length > 0 ? (
-            <ScrollArea className="h-auto md:h-[400px]">
-              <div className="grid gap-3 md:grid-cols-2 pr-4">
-                {services.map((service) => (
-                  <Dialog key={service.id}>
-                    <DialogTrigger asChild>
-                      <Card
-                        className="cursor-pointer hover:border-primary transition-colors"
-                        onClick={() => setSelectedService(service)}
-                      >
-                        <CardContent className="pt-6">
-                          <p className="font-semibold">{service.name}</p>
-                          <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
-                          <p className="text-lg font-bold text-primary">{formatCurrency(service.cost)}</p>
-                        </CardContent>
-                      </Card>
-                    </DialogTrigger>
-                    {selectedService?.id === service.id && (
-                      <DialogContent className="max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Agendar {service.name}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          {/* Info del servicio */}
-                          <div className="space-y-3">
-                            {service.imagen && (
-                              <div className="w-full overflow-hidden rounded-md aspect-video bg-muted">
-                                <img
-                                  src={service.imagen}
-                                  alt={service.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {services.map((service) => (
+                <Dialog key={service.id}>
+                  <DialogTrigger asChild>
+                    <Card
+                      className="cursor-pointer overflow-hidden py-0 gap-0 hover:shadow-md hover:border-primary/40 transition-all"
+                      onClick={() => setSelectedService(service)}
+                    >
+                      <div className="aspect-video w-full bg-muted overflow-hidden relative">
+                        {service.imagen ? (
+                          <img
+                            src={service.imagen}
+                            alt={service.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/15 via-primary/5 to-transparent">
+                            <Scissors className="h-8 w-8 text-primary/40" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 right-2 rounded-full bg-background/95 backdrop-blur px-3 py-1 shadow-sm">
+                          <span className="font-bold text-primary text-sm">
+                            {formatCurrency(service.cost)}
+                          </span>
+                        </div>
+                      </div>
+                      <CardContent className="p-4">
+                        <p className="font-semibold">{service.name}</p>
+                        {service.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                            {service.description}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </DialogTrigger>
+                  {selectedService?.id === service.id && (
+                    <DialogContent className="max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Agendar {service.name}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        {/* Info del servicio */}
+                        <div className="space-y-3">
+                          {service.imagen && (
+                            <div className="w-full overflow-hidden rounded-md aspect-video bg-muted">
+                              <img
+                                src={service.imagen}
+                                alt={service.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-semibold text-lg">{service.name}</p>
+                            {service.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {service.description}
+                              </p>
                             )}
-                            <div>
-                              <p className="font-semibold text-lg">{service.name}</p>
-                              {service.description && (
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {service.description}
-                                </p>
-                              )}
-                              <p className="text-lg font-bold text-primary mt-2">
-                                {formatCurrency(service.cost)}
+                            <p className="text-lg font-bold text-primary mt-2">
+                              {formatCurrency(service.cost)}
+                            </p>
+                          </div>
+                          {service.incluye && (
+                            <div className="rounded-md bg-muted/50 p-3">
+                              <p className="text-sm font-medium mb-1">Este servicio incluye:</p>
+                              <p className="text-sm text-muted-foreground whitespace-pre-line">
+                                {service.incluye}
                               </p>
                             </div>
-                            {service.incluye && (
-                              <div className="rounded-md bg-muted/50 p-3">
-                                <p className="text-sm font-medium mb-1">Este servicio incluye:</p>
-                                <p className="text-sm text-muted-foreground whitespace-pre-line">
-                                  {service.incluye}
-                                </p>
-                              </div>
-                            )}
-                          </div>
+                          )}
+                        </div>
 
-                          <div className="border-t pt-4 space-y-4">
+                        <div className="border-t pt-4 space-y-4">
                           {error && (
                             <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md flex gap-2">
                               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
@@ -644,75 +673,103 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                             </div>
                           )}
 
-                          {bookingSuccess && (
-                            <div className="p-3 text-sm text-green-600 bg-green-100 rounded-md">
-                              ¡Cita agendada exitosamente! Te enviaremos un WhatsApp de confirmación.
+                          {bookingSuccess ? (
+                            <div className="p-6 text-center space-y-2">
+                              <CheckCircle2 className="h-10 w-10 text-primary mx-auto" />
+                              <p className="font-semibold">¡Cita agendada!</p>
+                              <p className="text-sm text-muted-foreground">
+                                Te enviaremos un WhatsApp de confirmación.
+                              </p>
                             </div>
+                          ) : (
+                            <>
+                              <div>
+                                <Label htmlFor="employee">Barbero (opcional)</Label>
+                                <Select
+                                  value={selectedEmployee || 'none'}
+                                  onValueChange={(v) => setSelectedEmployee(v === 'none' ? '' : v)}
+                                >
+                                  <SelectTrigger className="mt-2">
+                                    <SelectValue placeholder="Sin preferencia" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">
+                                      <span className="flex items-center gap-2">
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                        Sin preferencia
+                                      </span>
+                                    </SelectItem>
+                                    {employees.map((emp) => (
+                                      <SelectItem key={emp.id} value={emp.id}>
+                                        <span className="flex items-center gap-2">
+                                          <Avatar className="h-5 w-5">
+                                            <AvatarFallback className="text-[10px]">
+                                              {emp.full_name?.[0]?.toUpperCase()}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          {emp.full_name}
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div>
+                                <Label htmlFor="date">Fecha</Label>
+                                <Input
+                                  id="date"
+                                  type="date"
+                                  value={selectedDate}
+                                  onChange={(e) => {
+                                    setSelectedDate(e.target.value)
+                                    setSelectedTime('')
+                                  }}
+                                  className="mt-2"
+                                  min={new Date().toISOString().split('T')[0]}
+                                />
+                              </div>
+
+                              <div>
+                                <Label>Hora</Label>
+                                <div className="mt-2 grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+                                  {generateTimeSlots().map((time) => (
+                                    <button
+                                      key={time}
+                                      type="button"
+                                      onClick={() => setSelectedTime(time)}
+                                      className={`text-xs rounded-md border py-2 transition-colors ${selectedTime === time
+                                          ? 'bg-primary text-primary-foreground border-primary'
+                                          : 'hover:border-primary/50'
+                                        }`}
+                                    >
+                                      {formatTimeLabel(time)}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="flex gap-3 justify-end pt-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setSelectedService(null)}
+                                  disabled={bookingSubmitting}
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button onClick={bookAppointment} disabled={bookingSubmitting}>
+                                  {bookingSubmitting ? 'Agendando...' : 'Agendar cita'}
+                                </Button>
+                              </div>
+                            </>
                           )}
-
-                          <div>
-                            <Label htmlFor="employee">Selecciona un barbero (opcional)</Label>
-                            <Select
-                              value={selectedEmployee || 'none'}
-                              onValueChange={(v) => setSelectedEmployee(v === 'none' ? '' : v)}
-                            >
-                              <SelectTrigger className="mt-2">
-                                <SelectValue placeholder="Sin preferencia" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Sin preferencia</SelectItem>
-                                {employees.map((emp) => (
-                                  <SelectItem key={emp.id} value={emp.id}>
-                                    {emp.full_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="date">Fecha</Label>
-                            <Input
-                              id="date"
-                              type="date"
-                              value={selectedDate}
-                              onChange={(e) => setSelectedDate(e.target.value)}
-                              className="mt-2"
-                              min={new Date().toISOString().split('T')[0]}
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="time">Hora</Label>
-                            <Input
-                              id="time"
-                              type="time"
-                              value={selectedTime}
-                              onChange={(e) => setSelectedTime(e.target.value)}
-                              className="mt-2"
-                            />
-                          </div>
-
-                          <div className="flex gap-3 justify-end">
-                            <Button
-                              variant="outline"
-                              onClick={() => setSelectedService(null)}
-                              disabled={bookingSubmitting}
-                            >
-                              Cancelar
-                            </Button>
-                            <Button onClick={bookAppointment} disabled={bookingSubmitting}>
-                              {bookingSubmitting ? 'Agendando...' : 'Agendar cita'}
-                            </Button>
-                          </div>
-                          </div>
                         </div>
-                      </DialogContent>
-                    )}
-                  </Dialog>
-                ))}
-              </div>
-            </ScrollArea>
+                      </div>
+                    </DialogContent>
+                  )}
+                </Dialog>
+              ))}
+            </div>
           ) : (
             <Card>
               <CardContent className="pt-6 text-center text-muted-foreground">
@@ -722,7 +779,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
           )}
         </div>
 
-        {/* Historial */}
+        {/* Historial como timeline */}
         <Card>
           <CardHeader>
             <CardTitle>Historial de visitas</CardTitle>
@@ -731,40 +788,43 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
           <CardContent>
             {history.length > 0 ? (
               <ScrollArea className="h-[400px]">
-                <div className="space-y-4 pr-4">
-                  {history.map((sale) => (
-                    <div key={sale.id} className="border-b pb-4 last:border-0">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium">
-                            {new Date(sale.created_at).toLocaleDateString('es-PE', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(sale.created_at).toLocaleTimeString('es-PE', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                        </div>
-                        <p className="font-semibold">{formatCurrency(sale.total)}</p>
-                      </div>
-                      <div className="space-y-1">
-                        {sale.items?.map((item) => (
-                          <div key={item.id} className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              {item.quantity}x {item.service?.name || item.product?.name}
-                            </span>
-                            <span>{formatCurrency(item.unit_price * item.quantity)}</span>
+                <div className="relative pr-4 pl-1">
+                  <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+                  <div className="space-y-6">
+                    {history.map((sale) => (
+                      <div key={sale.id} className="relative pl-6">
+                        <div className="absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full bg-primary ring-4 ring-background" />
+                        <div className="flex justify-between items-start mb-1">
+                          <div>
+                            <p className="font-medium text-sm">
+                              {new Date(sale.created_at).toLocaleDateString('es-PE', {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'long',
+                              })}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(sale.created_at).toLocaleTimeString('es-PE', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </p>
                           </div>
-                        ))}
+                          <p className="font-semibold text-sm">{formatCurrency(sale.total)}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          {sale.items?.map((item) => (
+                            <div key={item.id} className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                {item.quantity}x {item.service?.name || item.product?.name}
+                              </span>
+                              <span>{formatCurrency(item.unit_price * item.quantity)}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </ScrollArea>
             ) : (
