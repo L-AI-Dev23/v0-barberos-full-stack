@@ -599,11 +599,44 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                       </Card>
                     </DialogTrigger>
                     {selectedService?.id === service.id && (
-                      <DialogContent>
+                      <DialogContent className="max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Agendar {service.name}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
+                          {/* Info del servicio */}
+                          <div className="space-y-3">
+                            {service.imagen && (
+                              <div className="w-full overflow-hidden rounded-md aspect-video bg-muted">
+                                <img
+                                  src={service.imagen}
+                                  alt={service.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-semibold text-lg">{service.name}</p>
+                              {service.description && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {service.description}
+                                </p>
+                              )}
+                              <p className="text-lg font-bold text-primary mt-2">
+                                {formatCurrency(service.cost)}
+                              </p>
+                            </div>
+                            {service.incluye && (
+                              <div className="rounded-md bg-muted/50 p-3">
+                                <p className="text-sm font-medium mb-1">Este servicio incluye:</p>
+                                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                                  {service.incluye}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="border-t pt-4 space-y-4">
                           {error && (
                             <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md flex gap-2">
                               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
@@ -671,6 +704,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                             <Button onClick={bookAppointment} disabled={bookingSubmitting}>
                               {bookingSubmitting ? 'Agendando...' : 'Agendar cita'}
                             </Button>
+                          </div>
                           </div>
                         </div>
                       </DialogContent>
