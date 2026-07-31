@@ -373,121 +373,90 @@ export default function AppointmentsPage() {
       {/* Appointments List */}
       {displayMode === 'lista' && (
       <ScrollArea className="h-auto md:h-[calc(100vh-18rem)]">
-        <div className="grid gap-4 md:grid-cols-2 pr-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 pr-4">
           {appointments && appointments.length > 0 ? (
             appointments.map((apt) => {
               const config = statusConfig[apt.status]
               return (
-                <Card key={apt.id} className="flex flex-col">
-                  <CardHeader className="pb-3">
+                <Card key={apt.id} className="gap-0 py-3">
+                  <CardContent className="px-4 space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{apt.service?.name}</CardTitle>
-                        <CardDescription>{apt.service?.description}</CardDescription>
-                        {apt.opcion_seleccionada && (
-                          <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 mt-1 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
-                            {apt.opcion_seleccionada}
-                          </span>
-                        )}
-                      </div>
-                      <Badge className={config.color}>
+                      <p className="font-semibold text-sm leading-tight truncate">{apt.service?.name}</p>
+                      <Badge className={config.color + ' text-[10px] shrink-0'}>
                         {config.label}
                       </Badge>
                     </div>
-                  </CardHeader>
 
-                  <CardContent className="flex-1 space-y-3">
-                    {/* Client Name */}
-                    {apt.client && (
-                      <div className="flex gap-3">
-                        <Heart className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                        <div className="text-sm">
-                          <p className="font-medium">{apt.client.name}</p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      {apt.client && (
+                        <div className="flex items-center gap-1.5">
+                          <Heart className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{apt.client.name}</span>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Date and Time */}
-                    <div className="flex gap-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                      <div className="text-sm">
-                        <p className="font-medium">{formatDate(apt.appointment_time)}</p>
-                        <p className="text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatTime(apt.appointment_time)}
-                        </p>
+                      )}
+                      {apt.employee && (
+                        <div className="flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{apt.employee.full_name}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">
+                          {formatDate(apt.appointment_time)} · {formatTime(apt.appointment_time)}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Employee */}
-                    {apt.employee && (
-                      <div className="flex gap-3">
-                        <User className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                        <div className="text-sm">
-                          <p className="font-medium">{apt.employee.full_name}</p>
-                          <p className="text-muted-foreground">{apt.employee.email}</p>
-                        </div>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between pt-1.5 border-t">
+                      <p className="text-sm font-bold">{formatCurrency(apt.service?.cost || 0)}</p>
+                      <div className="flex items-center gap-1.5">
+                        <Select value={apt.status} onValueChange={(newStatus) => updateStatus(apt.id, newStatus)}>
+                          <SelectTrigger className="h-7 w-[110px] text-[11px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pendiente">Pendiente</SelectItem>
+                            <SelectItem value="confirmada">Confirmada</SelectItem>
+                            <SelectItem value="completada">Completada</SelectItem>
+                            <SelectItem value="cancelada">Cancelada</SelectItem>
+                          </SelectContent>
+                        </Select>
 
-                    {/* Notes */}
-                    {apt.notes && (
-                      <div className="text-sm p-2 bg-muted rounded">
-                        <p className="text-muted-foreground">{apt.notes}</p>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setDeleteConfirm(apt.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </DialogTrigger>
+                          {deleteConfirm === apt.id && (
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Eliminar cita</DialogTitle>
+                              </DialogHeader>
+                              <p className="text-muted-foreground">¿Estás seguro de que deseas eliminar esta cita? Esta acción no se puede deshacer.</p>
+                              <div className="flex gap-3 justify-end">
+                                <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+                                  Cancelar
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => deleteAppointment(apt.id)}
+                                >
+                                  Eliminar
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          )}
+                        </Dialog>
                       </div>
-                    )}
-
-                    {/* Service Price */}
-                    <div className="pt-2 border-t">
-                      <p className="text-lg font-bold">{formatCurrency(apt.service?.cost || 0)}</p>
                     </div>
                   </CardContent>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 p-4 border-t">
-                    <Select value={apt.status} onValueChange={(newStatus) => updateStatus(apt.id, newStatus)}>
-                      <SelectTrigger className="flex-1 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pendiente">Pendiente</SelectItem>
-                        <SelectItem value="confirmada">Confirmada</SelectItem>
-                        <SelectItem value="completada">Completada</SelectItem>
-                        <SelectItem value="cancelada">Cancelada</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => setDeleteConfirm(apt.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      {deleteConfirm === apt.id && (
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Eliminar cita</DialogTitle>
-                          </DialogHeader>
-                          <p className="text-muted-foreground">¿Estás seguro de que deseas eliminar esta cita? Esta acción no se puede deshacer.</p>
-                          <div className="flex gap-3 justify-end">
-                            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
-                              Cancelar
-                            </Button>
-                            <Button 
-                              variant="destructive" 
-                              onClick={() => deleteAppointment(apt.id)}
-                            >
-                              Eliminar
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      )}
-                    </Dialog>
-                  </div>
                 </Card>
               )
             })
