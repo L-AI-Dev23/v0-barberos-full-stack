@@ -70,12 +70,19 @@ function formatDateTime(dateStr: string) {
   )
 }
 
-function generateTimeSlots(startHour = 9, endHour = 19, stepMinutes = 30) {
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+function generateTimeSlots(startTime = '10:00', endTime = '22:00', stepMinutes = 30) {
   const slots: string[] = []
-  for (let h = startHour; h < endHour; h++) {
-    for (let m = 0; m < 60; m += stepMinutes) {
-      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
-    }
+  const [startH, startM] = startTime.split(':').map(Number)
+  const [endH, endM] = endTime.split(':').map(Number)
+  let cursor = startH * 60 + startM
+  const end = endH * 60 + endM
+  while (cursor < end) {
+    const h = Math.floor(cursor / 60)
+    const m = cursor % 60
+    slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    cursor += stepMinutes
   }
   return slots
 }
@@ -85,6 +92,27 @@ function formatTimeLabel(time: string) {
   const period = h >= 12 ? 'p. m.' : 'a. m.'
   const hour12 = h % 12 === 0 ? 12 : h % 12
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`
+}
+
+// Determina el rango horario disponible para el barbero seleccionado en la
+// fecha elegida. Sin barbero (o sin fecha aún), se usa el rango por defecto
+// 10am-10pm. Si el barbero no trabaja ese día, devuelve null.
+function getAvailableRange(
+  employee: Profile | undefined,
+  dateStr: string,
+): { start: string; end: string } | null {
+  if (!employee || !dateStr) {
+    return { start: '10:00', end: '22:00' }
+  }
+
+  const dayKey = DAY_KEYS[new Date(`${dateStr}T00:00:00`).getDay()]
+  const daySchedule = employee.work_schedule?.[dayKey]
+
+  if (!daySchedule || !daySchedule.enabled) {
+    return null
+  }
+
+  return { start: daySchedule.start, end: daySchedule.end }
 }
 
 export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId: string }> }) {
@@ -109,6 +137,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   const [selectedTime, setSelectedTime] = useState('')
   const [bookingSubmitting, setBookingSubmitting] = useState(false)
   const [bookingSuccess, setBookingSuccess] = useState(false)
+  const [bookedTimes, setBookedTimes] = useState<string[]>([])
   const [appointments, setAppointments] = useState<
     (Appointment & { service?: Service; employee?: Profile })[]
   >([])
@@ -132,7 +161,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
 
       const { data: employeesData } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, work_schedule')
         .eq('organization_id', orgId)
         .eq('role', 'employee')
 
@@ -165,6 +194,34 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       supabase.removeChannel(channel)
     }
   }, [client?.id])
+
+  useEffect(() => {
+    async function loadBookedTimes() {
+      if (!selectedDate || !selectedEmployee) {
+        setBookedTimes([])
+        return
+      }
+
+      const dayStart = `${selectedDate}T00:00:00`
+      const dayEnd = `${selectedDate}T23:59:59`
+
+      const { data } = await supabase
+        .from('appointments')
+        .select('appointment_time')
+        .eq('organization_id', orgId)
+        .eq('employee_id', selectedEmployee)
+        .gte('appointment_time', dayStart)
+        .lte('appointment_time', dayEnd)
+        .in('status', ['pendiente', 'confirmada'])
+
+      const times = (data || []).map((a) => {
+        const d = new Date(a.appointment_time)
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+      })
+      setBookedTimes(times)
+    }
+    loadBookedTimes()
+  }, [selectedDate, selectedEmployee])
 
   async function loadClientData(clientRecord: LoyaltyClient) {
     setClient(clientRecord)
@@ -687,7 +744,10 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                                 <Label htmlFor="employee">Barbero (opcional)</Label>
                                 <Select
                                   value={selectedEmployee || 'none'}
-                                  onValueChange={(v) => setSelectedEmployee(v === 'none' ? '' : v)}
+                                  onValueChange={(v) => {
+                                    setSelectedEmployee(v === 'none' ? '' : v)
+                                    setSelectedTime('')
+                                  }}
                                 >
                                   <SelectTrigger className="mt-2">
                                     <SelectValue placeholder="Sin preferencia" />
@@ -732,21 +792,45 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
 
                               <div>
                                 <Label>Hora</Label>
-                                <div className="mt-2 grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
-                                  {generateTimeSlots().map((time) => (
-                                    <button
-                                      key={time}
-                                      type="button"
-                                      onClick={() => setSelectedTime(time)}
-                                      className={`text-xs rounded-md border py-2 transition-colors ${selectedTime === time
-                                          ? 'bg-primary text-primary-foreground border-primary'
-                                          : 'hover:border-primary/50'
-                                        }`}
-                                    >
-                                      {formatTimeLabel(time)}
-                                    </button>
-                                  ))}
-                                </div>
+                                {(() => {
+                                  const employeeObj = employees.find((e) => e.id === selectedEmployee)
+                                  const range = getAvailableRange(employeeObj, selectedDate)
+
+                                  if (range === null) {
+                                    return (
+                                      <p className="mt-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+                                        Este barbero no atiende ese día. Elige otra fecha o selecciona otro barbero.
+                                      </p>
+                                    )
+                                  }
+
+                                  const slots = generateTimeSlots(range.start, range.end)
+
+                                  return (
+                                    <div className="mt-2 grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+                                      {slots.map((time) => {
+                                        const isBooked = bookedTimes.includes(time)
+                                        const isSelected = selectedTime === time
+                                        return (
+                                          <button
+                                            key={time}
+                                            type="button"
+                                            disabled={isBooked}
+                                            onClick={() => setSelectedTime(time)}
+                                            className={`text-xs rounded-md border py-2 transition-colors ${isBooked
+                                                ? 'opacity-40 line-through cursor-not-allowed bg-muted'
+                                                : isSelected
+                                                  ? 'bg-primary text-primary-foreground border-primary'
+                                                  : 'hover:border-primary/50'
+                                              }`}
+                                          >
+                                            {formatTimeLabel(time)}
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  )
+                                })()}
                               </div>
 
                               <div className="flex gap-3 justify-end pt-2">
