@@ -23,9 +23,24 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { QRCodeSVG } from 'qrcode.react'
-import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check, Heart } from 'lucide-react'
+import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check, Heart, List, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Appointment, Service, Profile } from '@/lib/types/database'
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  isToday,
+  addMonths,
+  subMonths,
+  format,
+} from 'date-fns'
+import { es } from 'date-fns/locale'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -55,6 +70,8 @@ export default function AppointmentsPage() {
   const [view, setView] = useState<'activas' | 'historial'>('activas')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
+  const [displayMode, setDisplayMode] = useState<'lista' | 'calendario'>('lista')
+  const [currentMonth, setCurrentMonth] = useState(new Date())
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -251,6 +268,26 @@ export default function AppointmentsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border p-0.5">
+            <Button
+              variant={displayMode === 'lista' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8"
+              onClick={() => setDisplayMode('lista')}
+            >
+              <List className="h-4 w-4 mr-2" />
+              Lista
+            </Button>
+            <Button
+              variant={displayMode === 'calendario' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8"
+              onClick={() => setDisplayMode('calendario')}
+            >
+              <CalendarDays className="h-4 w-4 mr-2" />
+              Calendario
+            </Button>
+          </div>
           <Button
             variant={view === 'historial' ? 'default' : 'outline'}
             onClick={() => setView(view === 'historial' ? 'activas' : 'historial')}
@@ -319,7 +356,22 @@ export default function AppointmentsPage() {
         )}
       </div>
 
+      {/* Calendar View */}
+      {displayMode === 'calendario' && (
+        <AppointmentsCalendar
+          appointments={appointments || []}
+          currentMonth={currentMonth}
+          onMonthChange={setCurrentMonth}
+          statusConfig={statusConfig}
+          formatCurrency={formatCurrency}
+          formatTime={formatTime}
+          onUpdateStatus={updateStatus}
+          onDelete={deleteAppointment}
+        />
+      )}
+
       {/* Appointments List */}
+      {displayMode === 'lista' && (
       <ScrollArea className="h-auto md:h-[calc(100vh-18rem)]">
         <div className="grid gap-4 md:grid-cols-2 pr-4">
           {appointments && appointments.length > 0 ? (
@@ -449,6 +501,174 @@ export default function AppointmentsPage() {
           )}
         </div>
       </ScrollArea>
+      )}
     </div>
+  )
+}
+
+function AppointmentsCalendar({
+  appointments,
+  currentMonth,
+  onMonthChange,
+  statusConfig,
+  formatCurrency,
+  formatTime,
+  onUpdateStatus,
+  onDelete,
+}: {
+  appointments: (Appointment & { service: Service | null; employee: Profile | null; client?: any })[]
+  currentMonth: Date
+  onMonthChange: (d: Date) => void
+  statusConfig: Record<string, { label: string; icon: any; color: string }>
+  formatCurrency: (n: number) => string
+  formatTime: (d: string) => string
+  onUpdateStatus: (id: string, status: string) => void
+  onDelete: (id: string) => void
+}) {
+  const monthStart = startOfMonth(currentMonth)
+  const monthEnd = endOfMonth(currentMonth)
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 })
+  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 })
+  const days = eachDayOfInterval({ start: gridStart, end: gridEnd })
+
+  const appointmentsByDay = (day: Date) =>
+    appointments.filter((apt) => isSameDay(new Date(apt.appointment_time), day))
+
+  const dotColor: Record<string, string> = {
+    pendiente: 'bg-yellow-500',
+    confirmada: 'bg-blue-500',
+    completada: 'bg-green-500',
+    cancelada: 'bg-red-500',
+  }
+
+  const weekdayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg capitalize">
+            {format(currentMonth, 'MMMM yyyy', { locale: es })}
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onMonthChange(subMonths(currentMonth, 1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={() => onMonthChange(new Date())}>
+              Hoy
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onMonthChange(addMonths(currentMonth, 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-7 gap-px mb-1">
+          {weekdayLabels.map((d) => (
+            <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
+              {d}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-px bg-border rounded-md overflow-hidden">
+          {days.map((day) => {
+            const dayAppointments = appointmentsByDay(day)
+            const inMonth = isSameMonth(day, currentMonth)
+            return (
+              <Popover key={day.toISOString()}>
+                <PopoverTrigger asChild disabled={dayAppointments.length === 0}>
+                  <button
+                    type="button"
+                    className={`min-h-[5rem] md:min-h-[6.5rem] bg-background p-1.5 flex flex-col items-start gap-1 text-left transition-colors ${
+                      inMonth ? '' : 'opacity-40'
+                    } ${dayAppointments.length > 0 ? 'hover:bg-accent cursor-pointer' : 'cursor-default'}`}
+                  >
+                    <span
+                      className={`text-xs font-medium h-5 w-5 flex items-center justify-center rounded-full ${
+                        isToday(day) ? 'bg-primary text-primary-foreground' : ''
+                      }`}
+                    >
+                      {format(day, 'd')}
+                    </span>
+                    <div className="flex flex-wrap gap-1 w-full">
+                      {dayAppointments.slice(0, 4).map((apt) => (
+                        <span
+                          key={apt.id}
+                          className={`h-1.5 w-1.5 rounded-full ${dotColor[apt.status] || 'bg-muted-foreground'}`}
+                        />
+                      ))}
+                    </div>
+                    {dayAppointments.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground mt-auto">
+                        {dayAppointments.length} cita{dayAppointments.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                {dayAppointments.length > 0 && (
+                  <PopoverContent className="w-80 p-0" align="start">
+                    <div className="p-3 border-b">
+                      <p className="font-medium capitalize">
+                        {format(day, "EEEE d 'de' MMMM", { locale: es })}
+                      </p>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto divide-y">
+                      {dayAppointments
+                        .sort((a, b) => new Date(a.appointment_time).getTime() - new Date(b.appointment_time).getTime())
+                        .map((apt) => {
+                          const config = statusConfig[apt.status]
+                          return (
+                            <div key={apt.id} className="p-3 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold">{apt.service?.name}</p>
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatTime(apt.appointment_time)}
+                                  </p>
+                                </div>
+                                <Badge className={config.color + ' text-[10px]'}>{config.label}</Badge>
+                              </div>
+                              {apt.client && (
+                                <p className="text-xs text-muted-foreground">{apt.client.name}</p>
+                              )}
+                              {apt.employee && (
+                                <p className="text-xs text-muted-foreground">{apt.employee.full_name}</p>
+                              )}
+                              <p className="text-sm font-semibold">{formatCurrency(apt.service?.cost || 0)}</p>
+                              <div className="flex gap-2 pt-1">
+                                <Select value={apt.status} onValueChange={(v) => onUpdateStatus(apt.id, v)}>
+                                  <SelectTrigger className="h-7 flex-1 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                                    <SelectItem value="confirmada">Confirmada</SelectItem>
+                                    <SelectItem value="completada">Completada</SelectItem>
+                                    <SelectItem value="cancelada">Cancelada</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => onDelete(apt.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </PopoverContent>
+                )}
+              </Popover>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
