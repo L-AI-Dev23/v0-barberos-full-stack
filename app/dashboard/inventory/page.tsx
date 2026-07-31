@@ -497,22 +497,18 @@ export default function InventoryPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 text-sm pt-4 border-t border-border/60">
+                <div className="grid grid-cols-3 gap-2 text-sm pt-4 border-t border-border/60">
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Precio</p>
-                    <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(product.sale_price)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Costo</p>
-                    <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(product.cost_price)}</p>
+                    <p className="font-semibold text-foreground text-sm mt-0.5">{formatCurrency(product.sale_price)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ganancia</p>
-                    <p className="font-extrabold text-green-600 dark:text-green-500 text-[15px] mt-0.5">{formatCurrency(product.sale_price - product.cost_price)}</p>
+                    <p className="font-semibold text-green-600 dark:text-green-500 text-sm mt-0.5">{formatCurrency(product.sale_price - product.cost_price)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Stock</p>
-                    <p className={`font-extrabold text-[15px] mt-0.5 ${isLowStock ? 'text-amber-500' : 'text-foreground'}`}>{product.stock}</p>
+                    <p className={`font-semibold text-sm mt-0.5 ${isLowStock ? 'text-amber-500' : 'text-foreground'}`}>{product.stock}</p>
                   </div>
                 </div>
               </div>

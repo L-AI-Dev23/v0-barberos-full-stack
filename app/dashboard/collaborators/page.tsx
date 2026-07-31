@@ -254,15 +254,15 @@ export default function CollaboratorsPage() {
       )}
 
       {/* Employees Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {employees?.map((emp) => (
           <Card
             key={emp.id}
             className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border border-border/80 p-0 py-0 pt-0 pb-0 gap-0 cursor-pointer"
             onClick={() => isAdmin && openEmployeeSheet(emp)}
           >
-            {/* Header Image or Premium Fallback */}
-            <div className="h-40 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
+            {/* Header Image or Premium Fallback - Más alargado (h-56) */}
+            <div className="h-56 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
               {emp.avatar_url ? (
                 <img
                   src={emp.avatar_url}

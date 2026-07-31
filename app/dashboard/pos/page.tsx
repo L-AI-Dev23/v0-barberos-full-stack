@@ -448,171 +448,179 @@ export default function POSPage() {
       <div className="lg:hidden border-t pt-4" />
 
       {/* Right side - Cart */}
-      <Card className="lg:w-96 flex flex-col">
-        <CardHeader className="pb-2">
+      <Card className="lg:w-96 flex flex-col lg:h-full overflow-hidden">
+        <CardHeader className="pb-2 shrink-0">
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
             Carrito
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col min-h-0">
-          {/* Cart Items */}
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            {cart.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Carrito vacío
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {cart.map((item, index) => (
-                  <div
-                    key={`${item.type}-${item.id}`}
-                    className="flex items-center gap-2"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCurrency(item.price)} x {item.quantity}
-                      </p>
+        
+        {/* Contenedor principal del carrito que usa flex y oculta desbordamientos externos */}
+        <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0">
+          
+          {/* ScrollArea interno para toda la zona de contenido (items y selectores) */}
+          <ScrollArea className="flex-1 pr-4 -mr-4">
+            <div className="space-y-4 py-2">
+              {/* Cart Items */}
+              {cart.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Carrito vacío
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {cart.map((item, index) => (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      className="flex items-center gap-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(item.price)} x {item.quantity}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => updateQuantity(index, -1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-6 text-center text-sm">
+                          {item.quantity}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => updateQuantity(index, 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => removeItem(index)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => updateQuantity(index, -1)}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-6 text-center text-sm">
-                        {item.quantity}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => updateQuantity(index, 1)}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => removeItem(index)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+
+              {/* Client Selector */}
+              <div className="space-y-2 pt-2">
+                <Label className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Seleccionar cliente (opcional)
+                </Label>
+                <Select value={selectedClient} onValueChange={setSelectedClient}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin cliente seleccionado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients?.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name} ({client.stamps}/5 estampillas)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+
+              {/* Coupon Selector */}
+              <div className="space-y-2">
+                <Label>Cupón</Label>
+                <Select
+                  value={applyCoupon ? "apply" : "none"}
+                  onValueChange={(val) => setApplyCoupon(val === "apply")}
+                  disabled={!selectedClient || clientCoupons <= 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin cupón" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      {!selectedClient
+                        ? "Seleccione un cliente primero"
+                        : clientCoupons <= 0
+                          ? "El cliente no tiene cupones disponibles"
+                          : "No aplicar cupón"}
+                    </SelectItem>
+                    {selectedClient && clientCoupons > 0 && (
+                      <SelectItem value="apply">
+                        Aplicar cupón ({clientCoupons} disponibles)
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Employee Selector */}
+              <div className="space-y-2">
+                <Label>Seleccionar empleado</Label>
+                <Select
+                  value={selectedEmployee}
+                  onValueChange={setSelectedEmployee}
+                  disabled={!isAdmin}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona empleado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees?.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Option selectors for services in cart */}
+              {cart.map((cartItem, index) => {
+                if (cartItem.type === "service" && cartItem.service?.opciones && cartItem.service.opciones.length > 0) {
+                  return (
+                    <div key={`opt-${cartItem.id}-${index}`} className="space-y-2">
+                      <Label className="text-xs font-semibold text-muted-foreground">
+                        Opción de estilo para {cartItem.name}
+                      </Label>
+                      <Select
+                        value={cartItem.selectedOption || ""}
+                        onValueChange={(val) => {
+                          const newCart = [...cart];
+                          newCart[index].selectedOption = val;
+                          setCart(newCart);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona una opción" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cartItem.service.opciones.map((opt) => (
+                            <SelectItem key={opt} value={opt}>
+                              {opt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
           </ScrollArea>
 
-          {/* Checkout Section */}
-          <div className="space-y-4 pt-4 border-t mt-4">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Seleccionar cliente (opcional)
-              </Label>
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin cliente seleccionado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients?.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name} ({client.stamps}/5 estampillas)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Coupon Selector */}
-            <div className="space-y-2">
-              <Label>Cupón</Label>
-              <Select
-                value={applyCoupon ? "apply" : "none"}
-                onValueChange={(val) => setApplyCoupon(val === "apply")}
-                disabled={!selectedClient || clientCoupons <= 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin cupón" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    {!selectedClient
-                      ? "Seleccione un cliente primero"
-                      : clientCoupons <= 0
-                        ? "El cliente no tiene cupones disponibles"
-                        : "No aplicar cupón"}
-                  </SelectItem>
-                  {selectedClient && clientCoupons > 0 && (
-                    <SelectItem value="apply">
-                      Aplicar cupón ({clientCoupons} disponibles)
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Seleccionar empleado</Label>
-              <Select
-                value={selectedEmployee}
-                onValueChange={setSelectedEmployee}
-                disabled={!isAdmin}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona empleado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees?.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id}>
-                      {emp.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Option selector for services in cart */}
-            {cart.map((cartItem, index) => {
-              if (cartItem.type === "service" && cartItem.service?.opciones && cartItem.service.opciones.length > 0) {
-                return (
-                  <div key={`opt-${cartItem.id}-${index}`} className="space-y-2">
-                    <Label className="text-xs font-semibold text-muted-foreground">
-                      Opción de estilo para {cartItem.name}
-                    </Label>
-                    <Select
-                      value={cartItem.selectedOption || ""}
-                      onValueChange={(val) => {
-                        const newCart = [...cart];
-                        newCart[index].selectedOption = val;
-                        setCart(newCart);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona una opción" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cartItem.service.opciones.map((opt) => (
-                          <SelectItem key={opt} value={opt}>
-                            {opt}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                );
-              }
-              return null;
-            })}
-
-            <div className="pt-2 border-t">
+          {/* Checkout Section - Fija en la parte baja */}
+          <div className="space-y-3 pt-4 border-t mt-auto shrink-0 bg-card">
+            <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-muted-foreground">Comisión</span>
                 <span>{formatCurrency(totalCommission)}</span>
