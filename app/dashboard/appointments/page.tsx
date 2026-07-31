@@ -24,9 +24,11 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { QRCodeSVG } from 'qrcode.react'
-import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check, Heart, List, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { Appointment, Service, Profile } from '@/lib/types/database'
+import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check, Heart, List, CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import type { Appointment, Service, Profile, LoyaltyClient } from '@/lib/types/database'
 import {
   startOfMonth,
   endOfMonth,
@@ -77,6 +79,18 @@ export default function AppointmentsPage() {
   const [copied, setCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
 
+  // Nueva cita (creación manual)
+  const [newApptOpen, setNewApptOpen] = useState(false)
+  const [newApptSubmitting, setNewApptSubmitting] = useState(false)
+  const [newApptError, setNewApptError] = useState<string | null>(null)
+  const [newApptServiceId, setNewApptServiceId] = useState('')
+  const [newApptEmployeeId, setNewApptEmployeeId] = useState('')
+  const [newApptClientId, setNewApptClientId] = useState('')
+  const [newApptDate, setNewApptDate] = useState('')
+  const [newApptTime, setNewApptTime] = useState('')
+  const [newApptStatus, setNewApptStatus] = useState('pendiente')
+  const [newApptNotes, setNewApptNotes] = useState('')
+
   const bookingUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/loyalty/${profile?.organization_id}` 
     : ''
@@ -115,6 +129,91 @@ export default function AppointmentsPage() {
       return data || []
     }
   )
+
+  // Datos para el formulario de nueva cita
+  const { data: services } = useSWR<Service[]>(
+    profile?.organization_id ? `services-${profile.organization_id}` : null,
+    async () => {
+      const { data } = await supabase
+        .from('services')
+        .select('*')
+        .eq('organization_id', profile!.organization_id)
+        .order('name', { ascending: true })
+      return data || []
+    }
+  )
+
+  const { data: employees } = useSWR<Profile[]>(
+    profile?.organization_id ? `employees-${profile.organization_id}` : null,
+    async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('organization_id', profile!.organization_id)
+        .order('full_name', { ascending: true })
+      return data || []
+    }
+  )
+
+  const { data: clients } = useSWR<LoyaltyClient[]>(
+    profile?.organization_id ? `loyalty-clients-${profile.organization_id}` : null,
+    async () => {
+      const { data } = await supabase
+        .from('loyalty_clients')
+        .select('*')
+        .eq('organization_id', profile!.organization_id)
+        .order('name', { ascending: true })
+      return data || []
+    }
+  )
+
+  function resetNewApptForm() {
+    setNewApptServiceId('')
+    setNewApptEmployeeId('')
+    setNewApptClientId('')
+    setNewApptDate('')
+    setNewApptTime('')
+    setNewApptStatus('pendiente')
+    setNewApptNotes('')
+    setNewApptError(null)
+  }
+
+  async function createAppointment() {
+    if (!profile?.organization_id) return
+
+    if (!newApptServiceId || !newApptDate || !newApptTime) {
+      setNewApptError('Completa servicio, fecha y hora para continuar.')
+      return
+    }
+
+    setNewApptSubmitting(true)
+    setNewApptError(null)
+
+    const appointmentTime = new Date(`${newApptDate}T${newApptTime}`)
+
+    const { error } = await supabase
+      .from('appointments')
+      .insert({
+        organization_id: profile.organization_id,
+        service_id: newApptServiceId,
+        employee_id: newApptEmployeeId || null,
+        client_id: newApptClientId || null,
+        appointment_time: appointmentTime.toISOString(),
+        status: newApptStatus,
+        notes: newApptNotes || null,
+      })
+
+    setNewApptSubmitting(false)
+
+    if (error) {
+      setNewApptError('No se pudo crear la cita. Intenta de nuevo.')
+      return
+    }
+
+    resetNewApptForm()
+    setNewApptOpen(false)
+    mutateAppointments()
+  }
 
   async function updateStatus(appointmentId: string, newStatus: string) {
     const appointment = appointments?.find(apt => apt.id === appointmentId)
@@ -267,7 +366,7 @@ export default function AppointmentsPage() {
               : 'Gestiona las citas de tus clientes'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <div className="flex items-center rounded-md border p-0.5">
             <Button
               variant={displayMode === 'lista' ? 'default' : 'ghost'}
@@ -295,6 +394,140 @@ export default function AppointmentsPage() {
             <Clock className="h-4 w-4 mr-2" />
             {view === 'historial' ? 'Ver citas activas' : 'Historial'}
           </Button>
+          <Dialog
+            open={newApptOpen}
+            onOpenChange={(open) => {
+              setNewApptOpen(open)
+              if (!open) resetNewApptForm()
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nueva cita
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Nueva cita</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-appt-service">Servicio *</Label>
+                  <Select value={newApptServiceId} onValueChange={setNewApptServiceId}>
+                    <SelectTrigger id="new-appt-service" className="w-full">
+                      <SelectValue placeholder="Selecciona un servicio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {services?.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} — {formatCurrency(s.cost)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-appt-date">Fecha *</Label>
+                    <Input
+                      id="new-appt-date"
+                      type="date"
+                      value={newApptDate}
+                      onChange={(e) => setNewApptDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-appt-time">Hora *</Label>
+                    <Input
+                      id="new-appt-time"
+                      type="time"
+                      value={newApptTime}
+                      onChange={(e) => setNewApptTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-appt-client">Cliente</Label>
+                  <Select value={newApptClientId} onValueChange={setNewApptClientId}>
+                    <SelectTrigger id="new-appt-client" className="w-full">
+                      <SelectValue placeholder="Sin cliente asociado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients?.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-appt-employee">Barbero</Label>
+                  <Select value={newApptEmployeeId} onValueChange={setNewApptEmployeeId}>
+                    <SelectTrigger id="new-appt-employee" className="w-full">
+                      <SelectValue placeholder="Sin asignar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees?.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-appt-status">Estado</Label>
+                  <Select value={newApptStatus} onValueChange={setNewApptStatus}>
+                    <SelectTrigger id="new-appt-status" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="confirmada">Confirmada</SelectItem>
+                      <SelectItem value="completada">Completada</SelectItem>
+                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-appt-notes">Notas</Label>
+                  <Textarea
+                    id="new-appt-notes"
+                    placeholder="Notas opcionales sobre la cita..."
+                    value={newApptNotes}
+                    onChange={(e) => setNewApptNotes(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                {newApptError && (
+                  <p className="text-sm text-destructive">{newApptError}</p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNewApptOpen(false)
+                      resetNewApptForm()
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button onClick={createAppointment} disabled={newApptSubmitting}>
+                    {newApptSubmitting ? 'Creando...' : 'Crear cita'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           {isAdmin && (
             <Button onClick={generateQR} disabled={generating}>
               <QrCode className="h-4 w-4 mr-2" />
