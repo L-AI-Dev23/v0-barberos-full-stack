@@ -526,21 +526,21 @@ export default function LoyaltyPage() {
                 <h3 className="font-semibold mb-3">Historial de compras</h3>
                 <ScrollArea className="h-[250px]">
                   {clientHistory && clientHistory.length > 0 ? (
-                    <div className="space-y-3 pr-4">
+                    <div className="space-y-2 pr-4">
                       {clientHistory.map((sale) => (
-                        <Card key={sale.id}>
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <p className="text-sm text-muted-foreground">
+                        <Card key={sale.id} className="py-2">
+                          <CardContent className="py-2 px-4">
+                            <div className="flex justify-between items-center mb-1">
+                              <p className="text-xs text-muted-foreground">
                                 {new Date(sale.created_at).toLocaleDateString()}
                               </p>
-                              <p className="font-medium">
+                              <p className="text-sm font-semibold">
                                 {formatCurrency(sale.total)}
                               </p>
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                               {sale.items?.map((item) => (
-                                <p key={item.id} className="text-sm">
+                                <p key={item.id} className="text-sm font-medium">
                                   {item.quantity}x{" "}
                                   {item.service?.name || item.product?.name}
                                 </p>

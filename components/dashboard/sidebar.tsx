@@ -78,10 +78,22 @@ export function Sidebar() {
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex h-16 items-center gap-2 border-b px-6">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-              <Scissors className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-lg">BarberOS</span>
+            {profile?.organizations?.logo_url ? (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md overflow-hidden bg-muted">
+                <img
+                  src={profile.organizations.logo_url}
+                  alt={profile.organizations.name}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary">
+                <Scissors className="h-4 w-4 text-primary-foreground" />
+              </div>
+            )}
+            <span className="font-semibold text-lg truncate">
+              {profile?.organizations?.name || 'BarberOS'}
+            </span>
           </div>
 
           {/* Organization name */}
