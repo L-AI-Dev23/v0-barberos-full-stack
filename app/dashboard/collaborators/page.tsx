@@ -32,6 +32,7 @@ const MODULES = [
   { key: 'collaborators', label: 'Colaboradores' },
   { key: 'pos', label: 'P.O.S.' },
   { key: 'loyalty', label: 'Fidelidad' },
+  { key: 'appointments', label: 'Citas' },
   { key: 'configuration', label: 'Configuración' },
 ] as const
 

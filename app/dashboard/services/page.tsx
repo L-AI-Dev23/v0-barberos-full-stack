@@ -442,15 +442,15 @@ export default function ServicesPage() {
               <div className="grid grid-cols-3 gap-2 text-sm pt-4 border-t border-border/60">
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Precio</p>
-                  <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(service.cost)}</p>
+                  <p className="font-semibold text-foreground text-[15px] mt-0.5">{formatCurrency(service.cost)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Comisión</p>
-                  <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(service.commission)}</p>
+                  <p className="font-semibold text-foreground text-[15px] mt-0.5">{formatCurrency(service.commission)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ganancia</p>
-                  <p className="font-extrabold text-green-600 dark:text-green-500 text-[15px] mt-0.5">{formatCurrency(service.cost - service.commission)}</p>
+                  <p className="font-semibold text-green-600 dark:text-green-500 text-[15px] mt-0.5">{formatCurrency(service.cost - service.commission)}</p>
                 </div>
               </div>
             </div>

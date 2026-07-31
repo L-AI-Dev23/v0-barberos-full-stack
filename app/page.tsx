@@ -23,6 +23,7 @@ export default async function HomePage() {
         'collaborators': '/dashboard/collaborators',
         'pos': '/dashboard/pos',
         'loyalty': '/dashboard/loyalty',
+        'appointments': '/dashboard/appointments',
         'configuration': '/dashboard/configuration',
       }
 
