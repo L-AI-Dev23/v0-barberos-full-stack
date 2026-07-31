@@ -195,7 +195,7 @@ export default function ServicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Servicios</h1>
+          <h1 className="text-2xl font-semibold">Servicios</h1>
           <p className="text-muted-foreground">Gestiona los servicios de tu barbería</p>
         </div>
         {isAdmin && (
@@ -397,7 +397,7 @@ export default function ServicesPage() {
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
-                    <CardTitle className="text-lg font-bold text-foreground mr-1 truncate">{service.name}</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-foreground mr-1 truncate">{service.name}</CardTitle>
                     {service.category && (
                       <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0">
                         {service.category.name}
