@@ -315,7 +315,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         <img
           src={organization.logo_url}
           alt={organization.name}
-          className={`${sizeClass} rounded-full object-cover`}
+          className={`${sizeClass} rounded-full object-cover ${size === 'lg' ? 'mx-auto mb-4' : ''}`}
         />
       )
     }
