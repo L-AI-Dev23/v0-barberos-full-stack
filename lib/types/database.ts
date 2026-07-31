@@ -113,6 +113,8 @@ export interface Product {
   created_at: string
   updated_at: string
   category?: ProductCategory
+  imagen?: string | null
+  beneficios?: string | null
 }
 
 export interface LoyaltyClient {

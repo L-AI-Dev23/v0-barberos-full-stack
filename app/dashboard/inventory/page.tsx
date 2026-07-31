@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, MoreVertical, Pencil, Trash2, FolderPlus, Settings, AlertTriangle } from 'lucide-react'
+import { Plus, MoreVertical, Pencil, Trash2, FolderPlus, Settings, AlertTriangle, Sparkles } from 'lucide-react'
 import type { Product, ProductCategory } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
@@ -56,6 +56,8 @@ export default function InventoryPage() {
   const [productCostPrice, setProductCostPrice] = useState('')
   const [productStock, setProductStock] = useState('')
   const [productCategoryId, setProductCategoryId] = useState<string>('')
+  const [productImagen, setProductImagen] = useState('')
+  const [productBeneficios, setProductBeneficios] = useState('')
   const [minStockThreshold, setMinStockThreshold] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -138,6 +140,8 @@ export default function InventoryPage() {
       stock: parseInt(productStock),
       category_id: productCategoryId || null,
       organization_id: profile.organization_id,
+      imagen: productImagen.trim() || null,
+      beneficios: productBeneficios.trim() || null,
     }
 
     if (editingProduct) {
@@ -180,6 +184,8 @@ export default function InventoryPage() {
     setProductCostPrice('')
     setProductStock('')
     setProductCategoryId('')
+    setProductImagen('')
+    setProductBeneficios('')
     setEditingProduct(null)
   }
 
@@ -197,6 +203,8 @@ export default function InventoryPage() {
     setProductCostPrice(prod.cost_price.toString())
     setProductStock(prod.stock.toString())
     setProductCategoryId(prod.category_id || '')
+    setProductImagen(prod.imagen || '')
+    setProductBeneficios(prod.beneficios || '')
     setProductModalOpen(true)
   }
 
@@ -365,6 +373,22 @@ export default function InventoryPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Beneficios</Label>
+                    <Input
+                      placeholder="ej., Fijación extrema, Sin residuos, Brillo natural"
+                      value={productBeneficios}
+                      onChange={(e) => setProductBeneficios(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>URL de la Imagen</Label>
+                    <Input
+                      placeholder="ej., https://images.unsplash.com/..."
+                      value={productImagen}
+                      onChange={(e) => setProductImagen(e.target.value)}
+                    />
+                  </div>
                   <Button 
                     onClick={handleSaveProduct} 
                     disabled={saving || !productName.trim() || !productSalePrice || !productCostPrice || !productStock} 
@@ -408,64 +432,90 @@ export default function InventoryPage() {
       )}
 
       {/* Products Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {products?.map((product) => {
           const isLowStock = product.stock <= (product.min_stock || threshold)
           return (
-            <Card key={product.id} className={isLowStock ? 'border-amber-500' : ''}>
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    {product.name}
-                    {isLowStock && <AlertTriangle className="h-4 w-4 text-amber-500" />}
-                  </CardTitle>
-                  {product.category && (
-                    <p className="text-xs text-muted-foreground">{product.category.name}</p>
+            <Card key={product.id} className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border border-border/80 p-0 py-0 pt-0 pb-0 gap-0">
+              {/* Header Image or Premium Fallback */}
+              <div className="h-60 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
+                {product.imagen ? (
+                  <img
+                    src={product.imagen}
+                    alt={product.name}
+                    className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex flex-col items-center justify-center gap-2">
+                    <Sparkles className="h-8 w-8 text-violet-500/40 animate-pulse" />
+                    <span className="text-xs text-muted-foreground/40 font-semibold tracking-widest uppercase select-none">BarberOS</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="px-5 pt-4 pb-5 flex-1 flex flex-col justify-between gap-3">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                      <CardTitle className="text-lg font-bold text-foreground mr-1 truncate flex items-center gap-2">
+                        {product.name}
+                        {isLowStock && <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
+                      </CardTitle>
+                      {product.category && (
+                        <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0">
+                          {product.category.name}
+                        </span>
+                      )}
+                    </div>
+                    {isAdmin && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted/80 shrink-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditProduct(product)}>
+                            <Pencil className="h-4 w-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteProduct(product.id)} className="text-destructive">
+                            <Trash2 className="h-4 w-4 mr-2" /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+
+                  {product.description && (
+                    <p className="text-sm text-muted-foreground/90 leading-relaxed line-clamp-2">{product.description}</p>
+                  )}
+                  {product.beneficios && (
+                    <div className="text-xs bg-muted/60 p-3 rounded-lg border border-border/50">
+                      <p className="font-bold text-[10px] text-violet-600/80 dark:text-violet-400/80 uppercase tracking-widest mb-1">Beneficios</p>
+                      <p className="text-foreground/90 italic font-medium">{product.beneficios}</p>
+                    </div>
                   )}
                 </div>
-                {isAdmin && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => openEditProduct(product)}>
-                        <Pencil className="h-4 w-4 mr-2" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDeleteProduct(product.id)} className="text-destructive">
-                        <Trash2 className="h-4 w-4 mr-2" /> Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </CardHeader>
-              <CardContent>
-                {product.description && (
-                  <p className="text-sm text-muted-foreground mb-3">{product.description}</p>
-                )}
-                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+
+                <div className="grid grid-cols-4 gap-2 text-sm pt-4 border-t border-border/60">
                   <div>
-                    <p className="text-muted-foreground">Precio de venta</p>
-                    <p className="font-medium">{formatCurrency(product.sale_price)}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Precio</p>
+                    <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(product.sale_price)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Precio de costo</p>
-                    <p className="font-medium">{formatCurrency(product.cost_price)}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Costo</p>
+                    <p className="font-extrabold text-foreground text-[15px] mt-0.5">{formatCurrency(product.cost_price)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ganancia</p>
+                    <p className="font-extrabold text-green-600 dark:text-green-500 text-[15px] mt-0.5">{formatCurrency(product.sale_price - product.cost_price)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Stock</p>
+                    <p className={`font-extrabold text-[15px] mt-0.5 ${isLowStock ? 'text-amber-500' : 'text-foreground'}`}>{product.stock}</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Ganancia</p>
-                    <p className="font-medium text-green-600">{formatCurrency(product.sale_price - product.cost_price)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-muted-foreground text-xs">Stock</p>
-                    <p className={`font-bold text-lg ${isLowStock ? 'text-amber-500' : ''}`}>{product.stock}</p>
-                  </div>
-                </div>
-              </CardContent>
+              </div>
             </Card>
           )
         })}
