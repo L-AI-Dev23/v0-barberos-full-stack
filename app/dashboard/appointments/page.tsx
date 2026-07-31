@@ -84,6 +84,7 @@ export default function AppointmentsPage() {
   const [newApptSubmitting, setNewApptSubmitting] = useState(false)
   const [newApptError, setNewApptError] = useState<string | null>(null)
   const [newApptServiceId, setNewApptServiceId] = useState('')
+  const [newApptOption, setNewApptOption] = useState('')
   const [newApptEmployeeId, setNewApptEmployeeId] = useState('')
   const [newApptClientId, setNewApptClientId] = useState('')
   const [newApptDate, setNewApptDate] = useState('')
@@ -169,6 +170,7 @@ export default function AppointmentsPage() {
 
   function resetNewApptForm() {
     setNewApptServiceId('')
+    setNewApptOption('')
     setNewApptEmployeeId('')
     setNewApptClientId('')
     setNewApptDate('')
@@ -183,6 +185,12 @@ export default function AppointmentsPage() {
 
     if (!newApptServiceId || !newApptDate || !newApptTime) {
       setNewApptError('Completa servicio, fecha y hora para continuar.')
+      return
+    }
+
+    const selectedService = services?.find((s) => s.id === newApptServiceId)
+    if (selectedService?.opciones && selectedService.opciones.length > 0 && !newApptOption) {
+      setNewApptError('Selecciona una opción para este servicio.')
       return
     }
 
@@ -201,6 +209,7 @@ export default function AppointmentsPage() {
         appointment_time: appointmentTime.toISOString(),
         status: newApptStatus,
         notes: newApptNotes || null,
+        opcion_seleccionada: newApptOption || null,
       })
 
     setNewApptSubmitting(false)
@@ -414,7 +423,13 @@ export default function AppointmentsPage() {
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="new-appt-service">Servicio *</Label>
-                  <Select value={newApptServiceId} onValueChange={setNewApptServiceId}>
+                  <Select
+                    value={newApptServiceId}
+                    onValueChange={(v) => {
+                      setNewApptServiceId(v)
+                      setNewApptOption('')
+                    }}
+                  >
                     <SelectTrigger id="new-appt-service" className="w-full">
                       <SelectValue placeholder="Selecciona un servicio" />
                     </SelectTrigger>
@@ -427,6 +442,28 @@ export default function AppointmentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {(() => {
+                  const selectedService = services?.find((s) => s.id === newApptServiceId)
+                  if (!selectedService?.opciones || selectedService.opciones.length === 0) return null
+                  return (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-appt-option">Opción *</Label>
+                      <Select value={newApptOption} onValueChange={setNewApptOption}>
+                        <SelectTrigger id="new-appt-option" className="w-full">
+                          <SelectValue placeholder="Selecciona una opción" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {selectedService.opciones.map((op) => (
+                            <SelectItem key={op} value={op}>
+                              {op}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )
+                })()}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
