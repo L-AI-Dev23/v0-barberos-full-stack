@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/context/auth-context'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,28 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [schedule, setSchedule] = useState<Profile['work_schedule']>(profile?.work_schedule || {})
+  const [fullName, setFullName] = useState(profile?.full_name || '')
+  const [savingName, setSavingName] = useState(false)
+  const [nameSuccess, setNameSuccess] = useState(false)
+
+  useEffect(() => {
+    setFullName(profile?.full_name || '')
+  }, [profile?.full_name])
+
+  async function handleSaveName() {
+    if (!profile?.id || !fullName.trim()) return
+    setSavingName(true)
+
+    await supabase
+      .from('profiles')
+      .update({ full_name: fullName.trim() })
+      .eq('id', profile.id)
+
+    await refreshProfile()
+    setSavingName(false)
+    setNameSuccess(true)
+    setTimeout(() => setNameSuccess(false), 3000)
+  }
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -139,6 +161,31 @@ export default function ProfilePage() {
               disabled={uploading}
               onChange={handleAvatarUpload}
             />
+          </div>
+
+          <div className="pt-2 border-t">
+            <Label htmlFor="full-name" className="mb-2 block">Nombre completo</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="full-name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Tu nombre"
+                className="max-w-xs"
+              />
+              <Button
+                onClick={handleSaveName}
+                disabled={savingName || !fullName.trim() || fullName.trim() === profile?.full_name}
+                size="sm"
+              >
+                {nameSuccess ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    ¡Guardado!
+                  </>
+                ) : savingName ? 'Guardando...' : 'Guardar nombre'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

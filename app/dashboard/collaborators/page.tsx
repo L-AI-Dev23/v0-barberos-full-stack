@@ -262,7 +262,7 @@ export default function CollaboratorsPage() {
             onClick={() => isAdmin && openEmployeeSheet(emp)}
           >
             {/* Header Image or Premium Fallback */}
-            <div className="h-60 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
+            <div className="h-40 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
               {emp.avatar_url ? (
                 <img
                   src={emp.avatar_url}

@@ -417,7 +417,7 @@ export default function LoyaltyPage() {
             className="cursor-pointer hover:border-primary transition-colors"
             onClick={() => openClientSheet(client)}
           >
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
                   <User className="h-6 w-6 text-muted-foreground" />
