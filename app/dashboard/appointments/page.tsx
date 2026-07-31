@@ -651,7 +651,14 @@ export default function AppointmentsPage() {
                 <Card key={apt.id} className="gap-0 py-3">
                   <CardContent className="px-4 space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-sm leading-tight truncate">{apt.service?.name}</p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="font-semibold text-sm leading-tight truncate">{apt.service?.name}</p>
+                        {apt.opcion_seleccionada && (
+                          <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                            {apt.opcion_seleccionada}
+                          </span>
+                        )}
+                      </div>
                       <Badge className={config.color + ' text-[10px] shrink-0'}>
                         {config.label}
                       </Badge>
@@ -861,7 +868,14 @@ function AppointmentsCalendar({
                             <div key={apt.id} className="p-3 space-y-2">
                               <div className="flex items-start justify-between gap-2">
                                 <div>
-                                  <p className="text-sm font-semibold">{apt.service?.name}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-sm font-semibold">{apt.service?.name}</p>
+                                    {apt.opcion_seleccionada && (
+                                      <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                                        {apt.opcion_seleccionada}
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
                                     {formatTime(apt.appointment_time)}

@@ -172,6 +172,7 @@ export interface Appointment {
   appointment_time: string
   status: 'pendiente' | 'confirmada' | 'completada' | 'cancelada'
   notes: string | null
+  opcion_seleccionada?: string | null
   created_at: string
   updated_at: string
   client?: LoyaltyClient
