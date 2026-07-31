@@ -16,14 +16,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
 import { UserPlus, Copy, Check, Calendar, Trash2, Sparkles } from 'lucide-react'
 import type { Profile, InvitationCode, ModulePermissions } from '@/lib/types/database'
+
+const WORK_DAYS = [
+  { key: 'monday', label: 'L' },
+  { key: 'tuesday', label: 'M' },
+  { key: 'wednesday', label: 'M' },
+  { key: 'thursday', label: 'J' },
+  { key: 'friday', label: 'V' },
+  { key: 'saturday', label: 'S' },
+  { key: 'sunday', label: 'D' },
+] as const
 
 const MODULES = [
   { key: 'dashboard', label: 'Panel' },
@@ -41,7 +45,7 @@ export default function CollaboratorsPage() {
   const supabase = createClient()
   
   const [createSheetOpen, setCreateSheetOpen] = useState(false)
-  const [employeeSheetOpen, setEmployeeSheetOpen] = useState(false)
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Profile | null>(null)
   const [permissions, setPermissions] = useState<ModulePermissions>({})
   const [generatedCode, setGeneratedCode] = useState<string | null>(null)
@@ -115,9 +119,9 @@ export default function CollaboratorsPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  function openEmployeeSheet(emp: Profile) {
+  function openEmployeeModal(emp: Profile) {
     setSelectedEmployee(emp)
-    setEmployeeSheetOpen(true)
+    setEmployeeModalOpen(true)
   }
 
   async function deleteEmployee(id: string) {
@@ -126,7 +130,7 @@ export default function CollaboratorsPage() {
     // Delete the profile (auth user remains but can't access this org)
     await supabase.from('profiles').delete().eq('id', id)
     mutateEmployees()
-    setEmployeeSheetOpen(false)
+    setEmployeeModalOpen(false)
     setSelectedEmployee(null)
   }
 
@@ -259,7 +263,7 @@ export default function CollaboratorsPage() {
           <Card
             key={emp.id}
             className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border border-border/80 p-0 py-0 pt-0 pb-0 gap-0 cursor-pointer"
-            onClick={() => isAdmin && openEmployeeSheet(emp)}
+            onClick={() => isAdmin && openEmployeeModal(emp)}
           >
             {/* Header Image or Premium Fallback - Más alargado (h-56) */}
             <div className="h-56 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
@@ -297,6 +301,27 @@ export default function CollaboratorsPage() {
                     <span className="text-xs text-muted-foreground/60 italic">Sin módulos asignados</span>
                   )}
                 </div>
+
+                <div className="flex items-center gap-1 pt-1">
+                  {WORK_DAYS.map((d) => {
+                    const active = emp.work_schedule?.[d.key]?.enabled
+                    return (
+                      <span
+                        key={d.key}
+                        className={`flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-semibold ${
+                          active
+                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-muted text-muted-foreground/40'
+                        }`}
+                      >
+                        {d.label}
+                      </span>
+                    )
+                  })}
+                  {!emp.work_schedule && (
+                    <span className="text-xs text-muted-foreground/60 italic ml-1">Sin horario</span>
+                  )}
+                </div>
               </div>
             </div>
           </Card>
@@ -309,14 +334,14 @@ export default function CollaboratorsPage() {
         </div>
       )}
 
-      {/* Employee Detail Sheet */}
-      <Sheet open={employeeSheetOpen} onOpenChange={setEmployeeSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{selectedEmployee?.full_name}</SheetTitle>
-          </SheetHeader>
+      {/* Employee Detail Dialog Modal */}
+      <Dialog open={employeeModalOpen} onOpenChange={setEmployeeModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedEmployee?.full_name}</DialogTitle>
+          </DialogHeader>
           {selectedEmployee && (
-            <div className="space-y-6 py-6">
+            <div className="space-y-6 py-4">
               <div>
                 <p className="text-sm text-muted-foreground">{selectedEmployee.email}</p>
               </div>
@@ -345,8 +370,8 @@ export default function CollaboratorsPage() {
               </div>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

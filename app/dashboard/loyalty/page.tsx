@@ -14,12 +14,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -73,7 +67,7 @@ export default function LoyaltyPage() {
   const [selectedClient, setSelectedClient] = useState<LoyaltyClient | null>(
     null,
   );
-  const [clientSheetOpen, setClientSheetOpen] = useState(false);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [selectedCouponService, setSelectedCouponService] =
@@ -213,9 +207,9 @@ export default function LoyaltyPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function openClientSheet(client: LoyaltyClient) {
+  function openClientModal(client: LoyaltyClient) {
     setSelectedClient(client);
-    setClientSheetOpen(true);
+    setClientModalOpen(true);
   }
 
   function openConfigModal() {
@@ -415,7 +409,7 @@ export default function LoyaltyPage() {
           <Card
             key={client.id}
             className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => openClientSheet(client)}
+            onClick={() => openClientModal(client)}
           >
             <CardContent>
               <div className="flex items-center gap-4">
@@ -480,14 +474,14 @@ export default function LoyaltyPage() {
         </div>
       )}
 
-      {/* Client Detail Sheet */}
-      <Sheet open={clientSheetOpen} onOpenChange={setClientSheetOpen}>
-        <SheetContent className="w-full sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{selectedClient?.name}</SheetTitle>
-          </SheetHeader>
+      {/* Client Detail Dialog Modal */}
+      <Dialog open={clientModalOpen} onOpenChange={setClientModalOpen}>
+        <DialogContent className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedClient?.name}</DialogTitle>
+          </DialogHeader>
           {selectedClient && (
-            <div className="space-y-6 py-6">
+            <div className="space-y-6 py-4">
               {/* Loyalty Card */}
               <Card>
                 <CardContent className="pt-6">
@@ -530,7 +524,7 @@ export default function LoyaltyPage() {
               {/* Purchase History */}
               <div>
                 <h3 className="font-semibold mb-3">Historial de compras</h3>
-                <ScrollArea className="h-[300px]">
+                <ScrollArea className="h-[250px]">
                   {clientHistory && clientHistory.length > 0 ? (
                     <div className="space-y-3 pr-4">
                       {clientHistory.map((sale) => (
@@ -565,8 +559,8 @@ export default function LoyaltyPage() {
               </div>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Config Modal */}
       <Dialog open={configModalOpen} onOpenChange={setConfigModalOpen}>
