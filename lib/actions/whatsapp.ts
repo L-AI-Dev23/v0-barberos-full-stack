@@ -1,7 +1,7 @@
 'use server'
 
 import { createServiceClient } from '@/lib/supabase/service'
-import { sendWhatsAppMessage } from '@/lib/whatsapp/send-message'
+import { enqueueWhatsAppMessage } from '@/lib/whatsapp/queue'
 
 const BOOKING_WHATSAPP_WINDOW_MS = 5 * 60 * 1000
 
@@ -31,5 +31,5 @@ export async function triggerBookingWhatsApp(
     return { error: 'La ventana para enviar la notificación expiró' }
   }
 
-  return sendWhatsAppMessage(appointmentId, 'booking_created')
+  return enqueueWhatsAppMessage(appointmentId, organizationId, 'booking_created')
 }

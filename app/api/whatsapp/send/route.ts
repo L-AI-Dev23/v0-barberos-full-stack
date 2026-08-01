@@ -6,7 +6,8 @@ import {
   forbiddenResponse,
   requireOrgMembership,
 } from '@/lib/auth/api-auth'
-import { sendWhatsAppMessage, type WhatsAppTriggerEvent } from '@/lib/whatsapp/send-message'
+import { enqueueWhatsAppMessage } from '@/lib/whatsapp/queue'
+import type { WhatsAppTriggerEvent } from '@/lib/whatsapp/send-message'
 
 export async function POST(req: Request) {
   try {
@@ -40,16 +41,17 @@ export async function POST(req: Request) {
       return forbiddenResponse()
     }
 
-    const result = await sendWhatsAppMessage(appointmentId, event as WhatsAppTriggerEvent)
+    const result = await enqueueWhatsAppMessage(
+      appointmentId,
+      appointment.organization_id,
+      event as WhatsAppTriggerEvent,
+    )
 
     if ('success' in result && result.success) {
-      return NextResponse.json({ success: true, message: 'Mensaje enviado exitosamente', data: result.data })
+      return NextResponse.json({ success: true, message: 'Mensaje encolado, se enviará en los próximos segundos' })
     }
 
-    return NextResponse.json(
-      { error: result.error, detail: 'detail' in result ? result.detail : undefined },
-      { status: 'status' in result ? result.status : 500 },
-    )
+    return NextResponse.json({ error: 'error' in result ? result.error : 'No se pudo encolar el mensaje' }, { status: 500 })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Error interno'
     return NextResponse.json({ error: message }, { status: 500 })

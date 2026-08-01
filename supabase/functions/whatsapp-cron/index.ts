@@ -1,30 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 
-serve(async (req) => {
+serve(async (_req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
-
-    const evolutionApiUrlRaw = Deno.env.get('EVOLUTION_API_URL') ?? ''
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY') ?? ''
-
-    let evolutionApiUrl = evolutionApiUrlRaw.trim()
-    if (evolutionApiUrl && !evolutionApiUrl.startsWith('http://') && !evolutionApiUrl.startsWith('https://')) {
-      evolutionApiUrl = `https://${evolutionApiUrl}`
-    }
-    if (evolutionApiUrl.endsWith('/')) {
-      evolutionApiUrl = evolutionApiUrl.slice(0, -1)
-    }
-
-    if (!evolutionApiUrl || !evolutionApiKey) {
-      return new Response(JSON.stringify({ error: 'Faltan EVOLUTION_API_URL / EVOLUTION_API_KEY en los secrets de la función' }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      })
-    }
 
     const { data: appointments, error: apptError } = await supabaseClient
       .rpc('get_appointments_in_30m')
@@ -37,79 +19,50 @@ serve(async (req) => {
       })
     }
 
-    let messagesSent = 0
+    let queued = 0
 
     for (const appt of appointments) {
-      const { data: client } = await supabaseClient
-        .from('loyalty_clients')
-        .select('name, phone')
-        .eq('id', appt.client_id)
-        .single()
+      // Evitar encolar el mismo recordatorio dos veces si el cron corre
+      // varias veces mientras la cita sigue dentro de la ventana de 30 min.
+      const { data: existing } = await supabaseClient
+        .from('whatsapp_message_queue')
+        .select('id')
+        .eq('appointment_id', appt.id)
+        .eq('event', 'reminder_30m')
+        .maybeSingle()
 
-      const { data: org } = await supabaseClient
-        .from('organizations')
-        .select('whatsapp_connected')
-        .eq('id', appt.organization_id)
-        .single()
+      if (existing) continue
 
-      const { data: rule } = await supabaseClient
-        .from('whatsapp_rules')
-        .select('message_template')
-        .eq('organization_id', appt.organization_id)
-        .eq('trigger_event', 'reminder_30m')
-        .eq('is_active', true)
-        .single()
+      const { error: insertError } = await supabaseClient
+        .from('whatsapp_message_queue')
+        .insert({
+          appointment_id: appt.id,
+          organization_id: appt.organization_id,
+          event: 'reminder_30m',
+          status: 'pending',
+        })
 
-      if (client?.phone && org?.whatsapp_connected && rule) {
-        let message = rule.message_template
-        message = message.replace(/{nombre_cliente}/g, client.name)
-
-        const apptDate = new Date(appt.appointment_time)
-        const timeStr = apptDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-        const dateStr = apptDate.toLocaleDateString('es-PE')
-
-        message = message.replace(/{hora_cita}/g, timeStr)
-        message = message.replace(/{fecha_cita}/g, dateStr)
-
-        try {
-          const instanceName = `org-${appt.organization_id}`
-          const endpoint = `${evolutionApiUrl}/message/sendText/${instanceName}`
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': evolutionApiKey
-            },
-            body: JSON.stringify({
-              number: client.phone,
-              options: {
-                delay: 1200,
-                presence: "composing"
-              },
-              textMessage: {
-                text: message
-              }
-            })
-          })
-
-          if (response.ok) {
-            messagesSent++
-          } else {
-            console.error(`WhatsApp reminder failed for appointment ${appt.id}: HTTP ${response.status}`)
-          }
-        } catch (e) {
-          console.error(`WhatsApp reminder fetch error for appointment ${appt.id}:`, e)
-        }
-      }
+      if (!insertError) queued++
     }
 
-    return new Response(JSON.stringify({ success: true, messagesSent }), {
+    if (queued > 0) {
+      // Disparamos el worker sin esperar respuesta; si no llega a procesar
+      // todo, el propio cron del worker (cada 1 min) retoma la cola.
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      fetch(`${supabaseUrl}/functions/v1/whatsapp-queue-worker`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${serviceKey}` },
+      }).catch(() => {})
+    }
+
+    return new Response(JSON.stringify({ success: true, queued }), {
       headers: { "Content-Type": "application/json" },
     })
 
   } catch (error) {
     console.error("WhatsApp cron error:", error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Error interno' }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     })
