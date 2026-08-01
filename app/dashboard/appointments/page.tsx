@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/context/auth-context'
@@ -135,6 +135,32 @@ export default function AppointmentsPage() {
       return data || []
     }
   )
+
+  // Escucha cambios en tiempo real (citas creadas desde la página pública de reservas,
+  // u otro dispositivo) para que la lista se actualice al instante sin cambiar de menú.
+  useEffect(() => {
+    if (!profile?.organization_id) return
+
+    const channel = supabase
+      .channel(`appointments-realtime-${profile.organization_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `organization_id=eq.${profile.organization_id}`,
+        },
+        () => {
+          mutateAppointments()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.organization_id])
 
   // Datos para el formulario de nueva cita
   const { data: services } = useSWR<Service[]>(
