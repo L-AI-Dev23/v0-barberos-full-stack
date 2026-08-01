@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service'
+import { getEvolutionApiUrl, getEvolutionApiKey, getInstanceName } from '@/lib/whatsapp/config'
 
 export type WhatsAppTriggerEvent =
   | 'booking_created'
@@ -31,7 +32,7 @@ export async function sendWhatsAppMessage(appointmentId: string, event: WhatsApp
 
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .select('whatsapp_api_url, whatsapp_api_key, whatsapp_instance_name, whatsapp_connected')
+    .select('whatsapp_connected')
     .eq('id', appointment.organization_id)
     .maybeSingle()
 
@@ -39,9 +40,21 @@ export async function sendWhatsAppMessage(appointmentId: string, event: WhatsApp
     return { error: 'Error al buscar organización', status: 500 as const }
   }
 
-  if (!org?.whatsapp_connected || !org.whatsapp_api_url || !org.whatsapp_api_key || !org.whatsapp_instance_name) {
-    return { error: 'La configuración de WhatsApp está incompleta o desactivada', status: 400 as const }
+  if (!org?.whatsapp_connected) {
+    return { error: 'WhatsApp no está conectado para esta organización', status: 400 as const }
   }
+
+  let apiUrl: string
+  let apiKey: string
+  try {
+    apiUrl = getEvolutionApiUrl()
+    apiKey = getEvolutionApiKey()
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Configuración de WhatsApp incompleta en el servidor'
+    return { error: message, status: 500 as const }
+  }
+
+  const instanceName = getInstanceName(appointment.organization_id)
 
   const { data: rule, error: ruleError } = await supabase
     .from('whatsapp_rules')
@@ -57,14 +70,6 @@ export async function sendWhatsAppMessage(appointmentId: string, event: WhatsApp
 
   if (!rule?.message_template) {
     return { error: `No hay una regla activa para el evento: ${event}`, status: 404 as const }
-  }
-
-  let whatsappApiUrlSanitized = org.whatsapp_api_url.trim()
-  if (!whatsappApiUrlSanitized.startsWith('http://') && !whatsappApiUrlSanitized.startsWith('https://')) {
-    whatsappApiUrlSanitized = `https://${whatsappApiUrlSanitized}`
-  }
-  if (whatsappApiUrlSanitized.endsWith('/')) {
-    whatsappApiUrlSanitized = whatsappApiUrlSanitized.slice(0, -1)
   }
 
   let number = clientPhone.replace(/\D/g, '')
@@ -85,13 +90,13 @@ export async function sendWhatsAppMessage(appointmentId: string, event: WhatsApp
   message = message.replace(/{fecha_cita}/g, dateStr)
   message = message.replace(/{hora_cita}/g, timeStr)
 
-  const endpoint = `${whatsappApiUrlSanitized}/message/sendText/${org.whatsapp_instance_name}`
+  const endpoint = `${apiUrl}/message/sendText/${instanceName}`
 
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      apikey: org.whatsapp_api_key,
+      apikey: apiKey,
     },
     body: JSON.stringify({
       number,

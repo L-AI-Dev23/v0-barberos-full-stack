@@ -7,6 +7,7 @@ import {
   requireOrgMembership,
   requireAdmin,
 } from '@/lib/auth/api-auth'
+import { getEvolutionApiUrl, getEvolutionApiKey, getInstanceName } from '@/lib/whatsapp/config'
 
 export async function POST(req: Request) {
   try {
@@ -29,36 +30,27 @@ export async function POST(req: Request) {
       return forbiddenResponse()
     }
 
-    const supabase = createServiceClient()
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .select('whatsapp_api_url, whatsapp_api_key, whatsapp_instance_name')
-      .eq('id', organizationId)
-      .single()
-
-    if (orgError || !org?.whatsapp_api_url || !org?.whatsapp_api_key || !org?.whatsapp_instance_name) {
-      return NextResponse.json({ error: 'Configuración de WhatsApp no encontrada o incompleta' }, { status: 404 })
+    let apiUrl: string
+    let apiKey: string
+    try {
+      apiUrl = getEvolutionApiUrl()
+      apiKey = getEvolutionApiKey()
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Configuración de WhatsApp incompleta en el servidor'
+      return NextResponse.json({ error: message }, { status: 500 })
     }
 
-    const { whatsapp_api_url, whatsapp_api_key, whatsapp_instance_name } = org
-
-    let whatsappApiUrlSanitized = whatsapp_api_url.trim()
-    if (!whatsappApiUrlSanitized.startsWith('http://') && !whatsappApiUrlSanitized.startsWith('https://')) {
-      whatsappApiUrlSanitized = `https://${whatsappApiUrlSanitized}`
-    }
-    if (whatsappApiUrlSanitized.endsWith('/')) {
-      whatsappApiUrlSanitized = whatsappApiUrlSanitized.slice(0, -1)
-    }
+    const instanceName = getInstanceName(organizationId)
 
     try {
-      await fetch(`${whatsappApiUrlSanitized}/instance/create`, {
+      await fetch(`${apiUrl}/instance/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: whatsapp_api_key,
+          apikey: apiKey,
         },
         body: JSON.stringify({
-          instanceName: whatsapp_instance_name,
+          instanceName,
           qrcode: true,
         }),
       })
@@ -67,19 +59,28 @@ export async function POST(req: Request) {
     }
 
     const stateRes = await fetch(
-      `${whatsappApiUrlSanitized}/instance/connectionState/${whatsapp_instance_name}`,
-      { headers: { apikey: whatsapp_api_key } },
+      `${apiUrl}/instance/connectionState/${instanceName}`,
+      { headers: { apikey: apiKey } },
     )
 
     const stateData = await stateRes.json().catch(() => ({}))
 
     if (stateData.instance?.state === 'open') {
+      const supabase = createServiceClient()
+      await supabase
+        .from('organizations')
+        .update({
+          whatsapp_connected: true,
+          whatsapp_instance_name: instanceName,
+        })
+        .eq('id', organizationId)
+
       return NextResponse.json({ status: 'connected' })
     }
 
     const qrRes = await fetch(
-      `${whatsappApiUrlSanitized}/instance/connect/${whatsapp_instance_name}`,
-      { headers: { apikey: whatsapp_api_key } },
+      `${apiUrl}/instance/connect/${instanceName}`,
+      { headers: { apikey: apiKey } },
     )
 
     const qrData = await qrRes.json().catch(() => ({}))

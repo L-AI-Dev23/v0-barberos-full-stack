@@ -8,6 +8,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    const evolutionApiUrlRaw = Deno.env.get('EVOLUTION_API_URL') ?? ''
+    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY') ?? ''
+
+    let evolutionApiUrl = evolutionApiUrlRaw.trim()
+    if (evolutionApiUrl && !evolutionApiUrl.startsWith('http://') && !evolutionApiUrl.startsWith('https://')) {
+      evolutionApiUrl = `https://${evolutionApiUrl}`
+    }
+    if (evolutionApiUrl.endsWith('/')) {
+      evolutionApiUrl = evolutionApiUrl.slice(0, -1)
+    }
+
+    if (!evolutionApiUrl || !evolutionApiKey) {
+      return new Response(JSON.stringify({ error: 'Faltan EVOLUTION_API_URL / EVOLUTION_API_KEY en los secrets de la función' }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
     const { data: appointments, error: apptError } = await supabaseClient
       .rpc('get_appointments_in_30m')
 
@@ -30,7 +48,7 @@ serve(async (req) => {
 
       const { data: org } = await supabaseClient
         .from('organizations')
-        .select('whatsapp_api_url, whatsapp_api_key, whatsapp_instance_name, whatsapp_connected')
+        .select('whatsapp_connected')
         .eq('id', appt.organization_id)
         .single()
 
@@ -42,7 +60,7 @@ serve(async (req) => {
         .eq('is_active', true)
         .single()
 
-      if (client?.phone && org?.whatsapp_connected && org.whatsapp_api_url && rule) {
+      if (client?.phone && org?.whatsapp_connected && rule) {
         let message = rule.message_template
         message = message.replace(/{nombre_cliente}/g, client.name)
 
@@ -54,20 +72,13 @@ serve(async (req) => {
         message = message.replace(/{fecha_cita}/g, dateStr)
 
         try {
-          let apiUrl = org.whatsapp_api_url.trim()
-          if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
-            apiUrl = `https://${apiUrl}`
-          }
-          if (apiUrl.endsWith('/')) {
-            apiUrl = apiUrl.slice(0, -1)
-          }
-
-          const endpoint = `${apiUrl}/message/sendText/${org.whatsapp_instance_name}`
+          const instanceName = `org-${appt.organization_id}`
+          const endpoint = `${evolutionApiUrl}/message/sendText/${instanceName}`
           const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'apikey': org.whatsapp_api_key || ''
+              'apikey': evolutionApiKey
             },
             body: JSON.stringify({
               number: client.phone,

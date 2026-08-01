@@ -84,10 +84,6 @@ export default function LoyaltyPage() {
   
   // WhatsApp States
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
-  const [waApiUrl, setWaApiUrl] = useState("");
-  const [waApiKey, setWaApiKey] = useState("");
-  const [waInstance, setWaInstance] = useState("");
-  const [savingWaConfig, setSavingWaConfig] = useState(false);
   const [loadingQr, setLoadingQr] = useState(false);
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'qr' | 'connected'>('disconnected');
@@ -261,7 +257,7 @@ export default function LoyaltyPage() {
   }
 
   async function checkConnectionState() {
-    if (!profile?.organization_id || !organization?.whatsapp_api_url || !organization?.whatsapp_instance_name) return;
+    if (!profile?.organization_id) return;
     try {
       const res = await fetch('/api/whatsapp/connect', {
         method: 'POST',
@@ -280,29 +276,10 @@ export default function LoyaltyPage() {
   }
 
   function openMessagesModal() {
-    setWaApiUrl(organization?.whatsapp_api_url || "");
-    setWaApiKey(organization?.whatsapp_api_key || "");
-    setWaInstance(organization?.whatsapp_instance_name || "");
     setMessagesModalOpen(true);
     setTimeout(() => {
       checkConnectionState();
     }, 200);
-  }
-
-  async function saveWaConfig() {
-    if (!profile?.organization_id) return;
-    setSavingWaConfig(true);
-    await supabase
-      .from("organizations")
-      .update({
-        whatsapp_api_url: waApiUrl,
-        whatsapp_api_key: waApiKey,
-        whatsapp_instance_name: waInstance,
-        whatsapp_connected: true
-      })
-      .eq("id", profile.organization_id);
-    mutateOrg();
-    setSavingWaConfig(false);
   }
 
   async function saveNewRule() {
@@ -634,50 +611,20 @@ export default function LoyaltyPage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Phone className="h-4 w-4" />
-                  Conexión WhatsApp (API No Oficial)
+                  Conexión WhatsApp
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>API URL</Label>
-                    <Input 
-                      placeholder="Ej. https://api.whatsapp-gateway.com" 
-                      value={waApiUrl}
-                      onChange={(e) => setWaApiUrl(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Instance Name / Token</Label>
-                    <Input 
-                      placeholder="Ej. barberia_main" 
-                      value={waInstance}
-                      onChange={(e) => setWaInstance(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>API Key</Label>
-                    <Input 
-                      type="password"
-                      placeholder="Tu API Key secreta" 
-                      value={waApiKey}
-                      onChange={(e) => setWaApiKey(e.target.value)}
-                    />
-                  </div>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Vincula el WhatsApp de tu negocio escaneando un código QR. No necesitas configurar nada más.
+                </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button onClick={saveWaConfig} disabled={savingWaConfig}>
-                    {savingWaConfig ? "Guardando..." : "Guardar conexión"}
+                  <Button
+                    variant="outline"
+                    onClick={connectWhatsApp}
+                    disabled={loadingQr}
+                    className="border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
+                  >
+                    {loadingQr ? "Generando QR..." : (connectionStatus === 'connected' ? "Reconectar" : "Conectar Celular (Ver QR)")}
                   </Button>
-                  
-                  {organization?.whatsapp_api_url && organization?.whatsapp_instance_name && (
-                    <Button 
-                      variant="outline" 
-                      onClick={connectWhatsApp} 
-                      disabled={loadingQr}
-                      className="border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
-                    >
-                      {loadingQr ? "Generando QR..." : "Conectar Celular (Ver QR)"}
-                    </Button>
-                  )}
 
                   {connectionStatus === 'connected' && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
