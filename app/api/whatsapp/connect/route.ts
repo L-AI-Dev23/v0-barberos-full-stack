@@ -42,30 +42,16 @@ export async function POST(req: Request) {
 
     const instanceName = getInstanceName(organizationId)
 
-    try {
-      await fetch(`${apiUrl}/instance/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: apiKey,
-        },
-        body: JSON.stringify({
-          instanceName,
-          qrcode: true,
-        }),
-      })
-    } catch {
-      // La instancia puede existir ya; continuar con el flujo de conexión.
-    }
-
+    // Revisamos primero si la instancia ya existe y su estado, antes de intentar crearla.
     const stateRes = await fetch(
       `${apiUrl}/instance/connectionState/${instanceName}`,
       { headers: { apikey: apiKey } },
     )
 
-    const stateData = await stateRes.json().catch(() => ({}))
+    let stateData = await stateRes.json().catch(() => ({}))
+    let instanceExists = stateRes.ok
 
-    if (stateData.instance?.state === 'open') {
+    if (stateData?.instance?.state === 'open') {
       const supabase = createServiceClient()
       await supabase
         .from('organizations')
@@ -78,6 +64,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: 'connected' })
     }
 
+    // Si la instancia no existe todavía (404), la creamos.
+    if (!instanceExists) {
+      const createRes = await fetch(`${apiUrl}/instance/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: apiKey,
+        },
+        body: JSON.stringify({
+          instanceName,
+          qrcode: true,
+          integration: 'WHATSAPP-BAILEYS',
+        }),
+      })
+
+      const createData = await createRes.json().catch(() => ({}))
+
+      if (!createRes.ok) {
+        const errMsg = createData?.message || createData?.error || `HTTP ${createRes.status}`
+        return NextResponse.json({
+          status: 'disconnected',
+          message: `No se pudo crear la instancia en Evolution API. Detalle: ${JSON.stringify(errMsg)}`,
+        })
+      }
+
+      // El endpoint de creación en v2 ya suele devolver el QR directamente.
+      const qrFromCreate = createData?.qrcode?.base64
+      if (qrFromCreate) {
+        return NextResponse.json({ status: 'qr', qrCode: qrFromCreate })
+      }
+    }
+
     const qrRes = await fetch(
       `${apiUrl}/instance/connect/${instanceName}`,
       { headers: { apikey: apiKey } },
@@ -85,14 +103,26 @@ export async function POST(req: Request) {
 
     const qrData = await qrRes.json().catch(() => ({}))
 
+    if (!qrRes.ok) {
+      const errMsg = qrData?.message || qrData?.error || `HTTP ${qrRes.status}`
+      return NextResponse.json({
+        status: 'disconnected',
+        message: `No se pudo obtener el QR. Detalle del servidor: ${JSON.stringify(errMsg)}`,
+      })
+    }
+
     if (qrData.qrcode?.base64) {
       return NextResponse.json({ status: 'qr', qrCode: qrData.qrcode.base64 })
+    }
+
+    if (qrData.base64) {
+      return NextResponse.json({ status: 'qr', qrCode: qrData.base64 })
     }
 
     const errMsg = qrData.message || qrData.error || 'No se pudo obtener el QR'
     return NextResponse.json({
       status: 'disconnected',
-      message: `No se pudo obtener el QR. Detalle del servidor: ${errMsg}`,
+      message: `No se pudo obtener el QR. Detalle del servidor: ${JSON.stringify(errMsg)}`,
     })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Error interno'
