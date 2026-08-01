@@ -14,6 +14,12 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -67,10 +73,10 @@ export default function LoyaltyPage() {
   const [selectedClient, setSelectedClient] = useState<LoyaltyClient | null>(
     null,
   );
-  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [clientSheetOpen, setClientSheetOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [selectedCouponService, setSelectedCouponService] =
+  const [selectedCouponDiscount, setSelectedCouponDiscount] =
     useState<string>("");
   const [savingConfig, setSavingConfig] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -207,13 +213,17 @@ export default function LoyaltyPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function openClientModal(client: LoyaltyClient) {
+  function openClientSheet(client: LoyaltyClient) {
     setSelectedClient(client);
-    setClientModalOpen(true);
+    setClientSheetOpen(true);
   }
 
   function openConfigModal() {
-    setSelectedCouponService(organization?.coupon_service_id || "");
+    setSelectedCouponDiscount(
+      organization?.coupon_discount_percent
+        ? String(organization.coupon_discount_percent)
+        : "",
+    );
     setConfigModalOpen(true);
   }
 
@@ -325,7 +335,11 @@ export default function LoyaltyPage() {
 
     await supabase
       .from("organizations")
-      .update({ coupon_service_id: selectedCouponService || null })
+      .update({
+        coupon_discount_percent: selectedCouponDiscount
+          ? Number(selectedCouponDiscount)
+          : null,
+      })
       .eq("id", profile.organization_id);
 
     mutateOrg();
@@ -409,7 +423,7 @@ export default function LoyaltyPage() {
           <Card
             key={client.id}
             className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => openClientModal(client)}
+            onClick={() => openClientSheet(client)}
           >
             <CardContent>
               <div className="flex items-center gap-4">
@@ -474,14 +488,14 @@ export default function LoyaltyPage() {
         </div>
       )}
 
-      {/* Client Detail Dialog Modal */}
-      <Dialog open={clientModalOpen} onOpenChange={setClientModalOpen}>
-        <DialogContent className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedClient?.name}</DialogTitle>
-          </DialogHeader>
+      {/* Client Detail Sheet */}
+      <Sheet open={clientSheetOpen} onOpenChange={setClientSheetOpen}>
+        <SheetContent className="w-full sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>{selectedClient?.name}</SheetTitle>
+          </SheetHeader>
           {selectedClient && (
-            <div className="space-y-6 py-4">
+            <div className="space-y-6 py-6">
               {/* Loyalty Card */}
               <Card>
                 <CardContent className="pt-6">
@@ -524,23 +538,23 @@ export default function LoyaltyPage() {
               {/* Purchase History */}
               <div>
                 <h3 className="font-semibold mb-3">Historial de compras</h3>
-                <ScrollArea className="h-[250px]">
+                <ScrollArea className="h-[300px]">
                   {clientHistory && clientHistory.length > 0 ? (
-                    <div className="space-y-2 pr-4">
+                    <div className="space-y-3 pr-4">
                       {clientHistory.map((sale) => (
-                        <Card key={sale.id} className="py-2">
-                          <CardContent className="py-2 px-4">
-                            <div className="flex justify-between items-center mb-1">
-                              <p className="text-xs text-muted-foreground">
+                        <Card key={sale.id}>
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <p className="text-sm text-muted-foreground">
                                 {new Date(sale.created_at).toLocaleDateString()}
                               </p>
-                              <p className="text-sm font-semibold">
+                              <p className="font-medium">
                                 {formatCurrency(sale.total)}
                               </p>
                             </div>
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                               {sale.items?.map((item) => (
-                                <p key={item.id} className="text-sm font-medium">
+                                <p key={item.id} className="text-sm">
                                   {item.quantity}x{" "}
                                   {item.service?.name || item.product?.name}
                                 </p>
@@ -559,8 +573,8 @@ export default function LoyaltyPage() {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Config Modal */}
       <Dialog open={configModalOpen} onOpenChange={setConfigModalOpen}>
@@ -570,22 +584,23 @@ export default function LoyaltyPage() {
           </DialogHeader>
           <div className="space-y-6 py-6">
             <div className="space-y-2">
-              <Label>Servicio del cupón</Label>
+              <Label>Descuento del cupón</Label>
               <p className="text-sm text-muted-foreground">
-                Selecciona el servicio que será gratuito cuando un cliente
-                acumule un cupón (al completar 5 sellos).
+                Selecciona el porcentaje de descuento que aplicará el cupón
+                sobre el precio del servicio cuando un cliente acumule 5
+                sellos.
               </p>
               <Select
-                value={selectedCouponService}
-                onValueChange={setSelectedCouponService}
+                value={selectedCouponDiscount}
+                onValueChange={setSelectedCouponDiscount}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar servicio" />
+                  <SelectValue placeholder="Seleccionar porcentaje" />
                 </SelectTrigger>
                 <SelectContent>
-                  {services?.map((service) => (
-                    <SelectItem key={service.id} value={service.id}>
-                      {service.name}
+                  {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((pct) => (
+                    <SelectItem key={pct} value={String(pct)}>
+                      {pct}% de descuento
                     </SelectItem>
                   ))}
                 </SelectContent>

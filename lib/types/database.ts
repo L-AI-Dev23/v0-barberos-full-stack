@@ -5,6 +5,7 @@ export interface Organization {
   name: string
   logo_url: string | null
   coupon_service_id: string | null
+  coupon_discount_percent: number | null
   whatsapp_api_url: string | null
   whatsapp_api_key: string | null
   whatsapp_instance_name: string | null
@@ -13,7 +14,10 @@ export interface Organization {
   updated_at: string
 }
 
-export type PublicOrganization = Pick<Organization, 'id' | 'name' | 'logo_url'>
+export type PublicOrganization = Pick<
+  Organization,
+  'id' | 'name' | 'logo_url' | 'coupon_discount_percent'
+>
 
 export interface WhatsAppRule {
   id: string

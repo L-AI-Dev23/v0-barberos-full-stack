@@ -171,19 +171,22 @@ export default function POSPage() {
   const selectedClientData = clients?.find((c) => c.id === selectedClient);
   const clientCoupons = selectedClientData?.coupons || 0;
 
-  // Calculate discount based on configured service
-  const couponServiceId = organization?.coupon_service_id;
-  const couponServiceItem = cart.find(
-    (item) => item.id === couponServiceId && item.type === "service",
-  );
+  // Calculate discount based on configured coupon percentage.
+  // Applies over the services in the cart (not products).
+  const couponDiscountPercent = organization?.coupon_discount_percent || 0;
+  const servicesSubtotal = cart
+    .filter((item) => item.type === "service")
+    .reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // If we applied coupon but we removed the service, untoggle the coupon
-  if (applyCoupon && !couponServiceItem) {
+  // If we applied the coupon but there are no services in the cart, untoggle it
+  if (applyCoupon && servicesSubtotal === 0) {
     setApplyCoupon(false);
   }
 
   const discount =
-    applyCoupon && couponServiceItem ? couponServiceItem.price : 0;
+    applyCoupon && couponDiscountPercent > 0
+      ? Math.round(servicesSubtotal * (couponDiscountPercent / 100) * 100) / 100
+      : 0;
 
   const cartTotal = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,

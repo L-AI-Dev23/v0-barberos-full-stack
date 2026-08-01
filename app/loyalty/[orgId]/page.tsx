@@ -146,7 +146,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
     async function loadOrg() {
       const { data } = await supabase
         .from('organizations_public')
-        .select('id, name, logo_url')
+        .select('id, name, logo_url, coupon_discount_percent')
         .eq('id', orgId)
         .single()
 
@@ -583,7 +583,9 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
               <h2 className="font-semibold text-lg">Tu tarjeta de fidelidad</h2>
             </div>
             <p className="text-sm text-muted-foreground text-center mb-6">
-              ¡Junta 5 sellos y obtén un servicio gratis!
+              {organization.coupon_discount_percent
+                ? `¡Junta 5 sellos y obtén ${organization.coupon_discount_percent}% de descuento!`
+                : '¡Junta 5 sellos y obtén un cupón de descuento!'}
             </p>
 
             <div className="flex gap-3 justify-center mb-4">
@@ -605,7 +607,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
               <p className="font-medium">{client.stamps} de 5 sellos recogidos</p>
               <p className="text-sm text-muted-foreground">
                 {5 - client.stamps > 0
-                  ? `${5 - client.stamps} sellos más para tu servicio gratis`
+                  ? `${5 - client.stamps} sellos más para tu cupón de descuento`
                   : '¡Ya completaste tu tarjeta!'}
               </p>
             </div>
@@ -615,7 +617,11 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                 <Gift className="h-8 w-8 text-primary mx-auto mb-2" />
                 <p className="font-semibold">¡Felicitaciones!</p>
                 <p className="text-sm text-muted-foreground">
-                  Has ganado un servicio gratis. ¡Avísale al staff en tu próxima visita!
+                  Has ganado un cupón de{' '}
+                  {organization.coupon_discount_percent
+                    ? `${organization.coupon_discount_percent}% de descuento`
+                    : 'descuento'}
+                  . ¡Avísale al staff en tu próxima visita!
                 </p>
               </div>
             )}
@@ -632,7 +638,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {client.coupons > 0
-                    ? 'Puedes canjear un servicio gratis en tu próxima visita'
+                    ? `Puedes canjear ${organization.coupon_discount_percent ? `${organization.coupon_discount_percent}% de descuento` : 'un descuento'} en tu próxima visita`
                     : 'Completa 5 sellos para obtener un cupón'}
                 </p>
               </div>
