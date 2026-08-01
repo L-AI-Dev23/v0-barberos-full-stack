@@ -166,9 +166,9 @@ export default function CollaboratorsPage() {
             if (!open) resetCreateSheet()
           }}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Crear empleado
+              <Button size="sm" className="md:px-3">
+                <UserPlus className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Crear empleado</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">

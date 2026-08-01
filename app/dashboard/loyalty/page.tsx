@@ -356,17 +356,17 @@ export default function LoyaltyPage() {
         </div>
         {isAdmin && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={openMessagesModal}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Mensajes
+            <Button variant="outline" onClick={openMessagesModal} className="md:px-3">
+              <MessageSquare className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Mensajes</span>
             </Button>
-            <Button variant="outline" onClick={openConfigModal}>
-              <Settings className="h-4 w-4 mr-2" />
-              Configurar
+            <Button variant="outline" onClick={openConfigModal} className="md:px-3">
+              <Settings className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Configurar</span>
             </Button>
-            <Button onClick={generateQR} disabled={generating}>
-              <QrCode className="h-4 w-4 mr-2" />
-              {generating ? "Generando..." : "Generar código QR"}
+            <Button onClick={generateQR} disabled={generating} className="md:px-3">
+              <QrCode className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">{generating ? "Generando..." : "Generar código QR"}</span>
             </Button>
           </div>
         )}

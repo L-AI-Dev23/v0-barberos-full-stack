@@ -386,8 +386,8 @@ export default function AppointmentsPage() {
               className="h-8"
               onClick={() => setDisplayMode('lista')}
             >
-              <List className="h-4 w-4 mr-2" />
-              Lista
+              <List className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Lista</span>
             </Button>
             <Button
               variant={displayMode === 'calendario' ? 'default' : 'ghost'}
@@ -395,16 +395,17 @@ export default function AppointmentsPage() {
               className="h-8"
               onClick={() => setDisplayMode('calendario')}
             >
-              <CalendarDays className="h-4 w-4 mr-2" />
-              Calendario
+              <CalendarDays className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Calendario</span>
             </Button>
           </div>
           <Button
             variant={view === 'historial' ? 'default' : 'outline'}
             onClick={() => setView(view === 'historial' ? 'activas' : 'historial')}
+            className="md:px-3"
           >
-            <Clock className="h-4 w-4 mr-2" />
-            {view === 'historial' ? 'Ver citas activas' : 'Historial'}
+            <Clock className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">{view === 'historial' ? 'Ver citas activas' : 'Historial'}</span>
           </Button>
           <Dialog
             open={newApptOpen}
@@ -414,9 +415,9 @@ export default function AppointmentsPage() {
             }}
           >
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva cita
+              <Button className="md:px-3">
+                <Plus className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Nueva cita</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[85vh] overflow-y-auto">
@@ -569,9 +570,9 @@ export default function AppointmentsPage() {
             </DialogContent>
           </Dialog>
           {isAdmin && (
-            <Button onClick={generateQR} disabled={generating}>
-              <QrCode className="h-4 w-4 mr-2" />
-              {generating ? 'Generando...' : 'Generar código QR'}
+            <Button onClick={generateQR} disabled={generating} className="md:px-3">
+              <QrCode className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">{generating ? 'Generando...' : 'Generar código QR'}</span>
             </Button>
           )}
         </div>
