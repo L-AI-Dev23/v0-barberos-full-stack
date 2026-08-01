@@ -239,12 +239,15 @@ export default function AppointmentsPage() {
 
     mutateAppointments()
 
-    // Enviar notificación de WhatsApp (Cita Completada) en segundo plano
-    if (newStatus === 'completada') {
-      fetch('/api/whatsapp/send', {
+    // Notificar al cliente (WhatsApp si está conectado, si no, push del sitio) en segundo plano
+    const notifyEvent =
+      newStatus === 'completada' ? 'booking_completed' : newStatus === 'confirmada' ? 'booking_confirmed' : null
+
+    if (notifyEvent) {
+      fetch('/api/notify/appointment-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId, event: 'booking_completed' })
+        body: JSON.stringify({ appointmentId, event: notifyEvent })
       }).catch(console.error);
     }
   }

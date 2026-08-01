@@ -46,6 +46,7 @@ import type {
 } from '@/lib/types/database'
 import { triggerBookingWhatsApp } from '@/lib/actions/whatsapp'
 import { normalizePhone, isValidPhone } from '@/lib/utils/phone'
+import { NotificationPrompt } from '@/components/notification-prompt'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -575,6 +576,8 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+        <NotificationPrompt organizationId={organization.id} clientId={client.id} />
+
         {/* Fidelidad + cupones en una sola tarjeta */}
         <Card className="overflow-hidden">
           <CardContent className="pt-6">
