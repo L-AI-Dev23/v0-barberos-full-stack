@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { QRCodeSVG } from 'qrcode.react'
+import { toast } from 'sonner'
 import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check, Heart, List, CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Appointment, Service, Profile, LoyaltyClient } from '@/lib/types/database'
 import {
@@ -71,6 +72,10 @@ export default function AppointmentsPage() {
   const supabase = createClient()
   const [view, setView] = useState<'activas' | 'historial'>('activas')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  // Cuando se intenta completar una cita sin barbero asignado, pedimos que se elija uno
+  const [pendingCompleteId, setPendingCompleteId] = useState<string | null>(null)
+  const [completeEmployeeId, setCompleteEmployeeId] = useState<string>('')
+  const [completeSubmitting, setCompleteSubmitting] = useState(false)
   const [search, setSearch] = useState('')
   const [displayMode, setDisplayMode] = useState<'lista' | 'calendario'>('lista')
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -227,6 +232,15 @@ export default function AppointmentsPage() {
   async function updateStatus(appointmentId: string, newStatus: string) {
     const appointment = appointments?.find(apt => apt.id === appointmentId)
 
+    // Si se va a completar una cita SIN barbero asignado, no podemos registrar la venta
+    // (la comisión pertenece a un empleado). Pedimos que se elija uno antes de continuar,
+    // en vez de completar la cita y perder el ingreso silenciosamente.
+    if (newStatus === 'completada' && appointment?.status !== 'completada' && !appointment?.employee_id) {
+      setCompleteEmployeeId('')
+      setPendingCompleteId(appointmentId)
+      return
+    }
+
     await supabase
       .from('appointments')
       .update({ status: newStatus })
@@ -252,10 +266,46 @@ export default function AppointmentsPage() {
     }
   }
 
+  // Confirma la completada de una cita que no tenía barbero asignado, luego de elegir uno
+  async function confirmCompleteWithEmployee() {
+    if (!pendingCompleteId || !completeEmployeeId) return
+
+    setCompleteSubmitting(true)
+
+    const appointment = appointments?.find(apt => apt.id === pendingCompleteId)
+
+    await supabase
+      .from('appointments')
+      .update({ status: 'completada', employee_id: completeEmployeeId })
+      .eq('id', pendingCompleteId)
+
+    await completeAppointmentSale(
+      appointment ? { ...appointment, employee_id: completeEmployeeId } : appointment
+    )
+
+    setCompleteSubmitting(false)
+    setPendingCompleteId(null)
+    setCompleteEmployeeId('')
+    mutateAppointments()
+
+    fetch('/api/notify/appointment-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointmentId: pendingCompleteId, event: 'booking_completed' })
+    }).catch(console.error)
+  }
+
   async function completeAppointmentSale(
     appointment?: (Appointment & { service: Service | null; employee: Profile | null; client?: any })
   ) {
     if (!appointment || !profile?.organization_id) return
+
+    if (!appointment.employee_id) {
+      // No debería pasar (se pide barbero antes de llegar aquí), pero evitamos
+      // que un insert sin employee_id falle en silencio contra la restricción NOT NULL.
+      toast.error('No se pudo registrar el ingreso: falta asignar un barbero a la cita.')
+      return
+    }
 
     const price = appointment.service?.cost || 0
     const totalCommission = (appointment.service as any)?.commission || 0
@@ -277,7 +327,7 @@ export default function AppointmentsPage() {
       if (saleError) throw saleError
 
       // Crear el item de la venta ligado al servicio de la cita
-      await supabase.from('sale_items').insert({
+      const { error: itemError } = await supabase.from('sale_items').insert({
         sale_id: sale.id,
         item_type: 'service',
         service_id: appointment.service_id,
@@ -285,7 +335,10 @@ export default function AppointmentsPage() {
         quantity: 1,
         unit_price: price,
         commission: totalCommission,
+        opcion_seleccionada: appointment.opcion_seleccionada || null,
       })
+
+      if (itemError) throw itemError
 
       // Sumar un sello de fidelidad al cliente (si la cita tiene cliente asociado)
       if (appointment.client_id && appointment.client) {
@@ -308,6 +361,7 @@ export default function AppointmentsPage() {
       }
     } catch (error) {
       console.error('Error registrando venta/fidelidad de la cita:', error)
+      toast.error('La cita se marcó como completada, pero no se pudo registrar el ingreso. Revisa la venta manualmente.')
     }
   }
 
@@ -752,6 +806,38 @@ export default function AppointmentsPage() {
         </div>
       </ScrollArea>
       )}
+
+      <Dialog open={!!pendingCompleteId} onOpenChange={(open) => { if (!open) { setPendingCompleteId(null); setCompleteEmployeeId('') } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asigna un barbero</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Esta cita no tiene un barbero asignado. Para registrar el ingreso y la comisión correspondiente, elige quién atendió al cliente.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="complete-employee">Barbero</Label>
+            <Select value={completeEmployeeId} onValueChange={setCompleteEmployeeId}>
+              <SelectTrigger id="complete-employee" className="w-full">
+                <SelectValue placeholder="Selecciona un barbero" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees?.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setPendingCompleteId(null); setCompleteEmployeeId('') }}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmCompleteWithEmployee} disabled={!completeEmployeeId || completeSubmitting}>
+              {completeSubmitting ? 'Completando...' : 'Completar cita'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
