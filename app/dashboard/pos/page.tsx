@@ -460,7 +460,7 @@ export default function POSPage() {
         <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0">
           
           {/* ScrollArea interno para toda la zona de contenido (items y selectores) */}
-          <ScrollArea className="flex-1 pr-4 -mr-4">
+          <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
             <div className="space-y-4 py-2">
               {/* Cart Items */}
               {cart.length === 0 ? (
