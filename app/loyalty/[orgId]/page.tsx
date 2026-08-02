@@ -158,11 +158,20 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         .select('*')
         .eq('organization_id', orgId)
 
-      setServices(servicesData || [])
+      const PRIORITY_ORDER = ['corte', 'corte + barba', 'corte + barba + facial']
+      const sortedServices = (servicesData || []).slice().sort((a, b) => {
+        const aIndex = PRIORITY_ORDER.indexOf(a.name.trim().toLowerCase())
+        const bIndex = PRIORITY_ORDER.indexOf(b.name.trim().toLowerCase())
+        const aRank = aIndex === -1 ? PRIORITY_ORDER.length : aIndex
+        const bRank = bIndex === -1 ? PRIORITY_ORDER.length : bIndex
+        return aRank - bRank
+      })
+
+      setServices(sortedServices)
 
       const { data: employeesData } = await supabase
         .from('profiles')
-        .select('id, full_name, work_schedule')
+        .select('id, full_name, work_schedule, avatar_url')
         .eq('organization_id', orgId)
         .eq('role', 'employee')
 
@@ -681,7 +690,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                         )}
                         <div className="absolute bottom-2 right-2 rounded-full bg-background/95 backdrop-blur px-3 py-1 shadow-sm">
                           <span className="font-bold text-primary text-sm">
-                            {formatCurrency(service.cost)}
+                            {service.variable_price ? 'Costo variable' : formatCurrency(service.cost)}
                           </span>
                         </div>
                       </div>
@@ -720,7 +729,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                               </p>
                             )}
                             <p className="text-lg font-bold text-primary mt-2">
-                              {formatCurrency(service.cost)}
+                              {service.variable_price ? 'Costo variable' : formatCurrency(service.cost)}
                             </p>
                           </div>
                           {service.incluye && (
