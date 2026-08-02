@@ -157,10 +157,16 @@ export default function CollaboratorsPage() {
 
   async function updateEmployeeType(type: 'barbero' | 'equipo') {
     if (!selectedEmployee) return
-    await supabase
+    const { error } = await supabase
       .from('profiles')
       .update({ employee_type: type })
       .eq('id', selectedEmployee.id)
+
+    if (error) {
+      console.error('Error updating employee_type:', error)
+      alert('No se pudo guardar el tipo de colaborador. Intenta de nuevo.')
+      return
+    }
 
     setSelectedEmployee(prev => prev ? { ...prev, employee_type: type } : null)
     mutateEmployees()
