@@ -38,6 +38,7 @@ import {
   Split,
   Heart,
   Lock,
+  History,
 } from "lucide-react";
 import type {
   Service,
@@ -182,6 +183,44 @@ export default function POSPage() {
     },
     { refreshInterval: 30000 },
   );
+
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
+
+  // Recent completed sales, for the "Historial" panel where a mistaken
+  // sale can be deleted (this immediately reduces daily revenue, payment
+  // method totals, and the open register's expected amounts, since those
+  // are all computed live from this table).
+  const {
+    data: salesHistory,
+    mutate: mutateSalesHistory,
+  } = useSWR(
+    historyDialogOpen && profile?.organization_id ? "pos-sales-history" : null,
+    async () => {
+      const { data } = await supabase
+        .from("sales")
+        .select("*, employee:profiles(*), client:loyalty_clients(*)")
+        .eq("organization_id", profile!.organization_id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+  );
+
+  async function handleDeleteSale(saleId: string) {
+    if (!confirm("¿Eliminar esta venta? Esta acción no se puede deshacer.")) return;
+    setDeletingSaleId(saleId);
+    try {
+      await supabase.from("sale_items").delete().eq("sale_id", saleId);
+      const { error } = await supabase.from("sales").delete().eq("id", saleId);
+      if (error) throw error;
+      mutateSalesHistory();
+    } catch (error) {
+      console.error("Error deleting sale:", error);
+      alert("No se pudo eliminar la venta. Intenta nuevamente.");
+    }
+    setDeletingSaleId(null);
+  }
 
   // Default the employee selector to the logged-in user (admin or not).
   // Admins can still change it afterwards; non-admins keep it locked.
@@ -500,38 +539,58 @@ export default function POSPage() {
         <div className="lg:flex-1 lg:overflow-hidden">
           <ScrollArea className="h-auto lg:h-full">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pr-4">
-              {filteredItems?.map((item) => (
-                <Card
-                  key={item.id}
-                  className="cursor-pointer hover:border-primary transition-colors relative"
-                  onClick={() =>
-                    addToCart(item, mode === "services" ? "service" : "product")
-                  }
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <p className="font-medium truncate flex-1">{item.name}</p>
-                      {mode === "services" && (item as Service).opciones && (item as Service).opciones!.length > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
-                          {(item as Service).opciones!.length} {(item as Service).opciones!.length === 1 ? 'opción' : 'opciones'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-lg font-bold text-primary">
-                      {formatCurrency(
-                        mode === "services"
-                          ? (item as Service).cost
-                          : (item as Product).sale_price,
-                      )}
-                    </p>
-                    {mode === "products" && (
-                      <p className="text-xs text-muted-foreground">
-                        Stock: {(item as Product).stock}
-                      </p>
+              {filteredItems?.map((item) => {
+                const cartQty = cart
+                  .filter((c) => c.id === item.id)
+                  .reduce((sum, c) => sum + c.quantity, 0)
+                const inCart = cartQty > 0
+                return (
+                  <Card
+                    key={item.id}
+                    className={`cursor-pointer transition-colors relative ${
+                      inCart
+                        ? "border-primary border-2 bg-primary/5 ring-1 ring-primary/30"
+                        : "hover:border-primary"
+                    }`}
+                    onClick={() =>
+                      addToCart(item, mode === "services" ? "service" : "product")
+                    }
+                  >
+                    {inCart && (
+                      <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shadow">
+                        <Check className="h-3.5 w-3.5" />
+                      </span>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-1 mb-1">
+                        <p className="font-medium truncate flex-1">{item.name}</p>
+                        {mode === "services" && (item as Service).opciones && (item as Service).opciones!.length > 0 && (
+                          <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                            {(item as Service).opciones!.length} {(item as Service).opciones!.length === 1 ? 'opción' : 'opciones'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-lg font-bold text-primary">
+                        {formatCurrency(
+                          mode === "services"
+                            ? (item as Service).cost
+                            : (item as Product).sale_price,
+                        )}
+                      </p>
+                      {mode === "products" && (
+                        <p className="text-xs text-muted-foreground">
+                          Stock: {(item as Product).stock}
+                        </p>
+                      )}
+                      {inCart && (
+                        <p className="text-xs font-semibold text-primary mt-1">
+                          En el carrito{cartQty > 1 ? ` ×${cartQty}` : ""}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           </ScrollArea>
         </div>
@@ -542,11 +601,19 @@ export default function POSPage() {
 
       {/* Right side - Cart */}
       <Card className="lg:w-96 flex flex-col lg:h-full overflow-hidden">
-        <CardHeader className="pb-2 shrink-0">
+        <CardHeader className="pb-2 shrink-0 flex flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
             Carrito
           </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHistoryDialogOpen(true)}
+          >
+            <History className="h-4 w-4 mr-1.5" />
+            Historial
+          </Button>
         </CardHeader>
         
         {/* Contenedor principal del carrito que usa flex y oculta desbordamientos externos */}
@@ -918,6 +985,65 @@ export default function POSPage() {
               {processing ? "Procesando..." : "Confirmar venta"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sales history dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Historial de ventas</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Últimas ventas completadas. Eliminar una venta hecha por error reduce
+            automáticamente lo registrado en caja e ingresos.
+          </p>
+          {!salesHistory ? (
+            <p className="text-center text-muted-foreground py-8">Cargando...</p>
+          ) : salesHistory.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Aún no hay ventas registradas.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {salesHistory.map((sale: any) => (
+                <div
+                  key={sale.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold">{formatCurrency(sale.total)}</p>
+                      <Badge variant="outline" className="capitalize">
+                        {sale.payment_method}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {new Date(sale.created_at).toLocaleString("es-PE", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      · {sale.employee?.full_name || "Empleado"}
+                      {sale.client?.name ? ` · ${sale.client.name}` : ""}
+                    </p>
+                  </div>
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive shrink-0"
+                      disabled={deletingSaleId === sale.id}
+                      onClick={() => handleDeleteSale(sale.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
