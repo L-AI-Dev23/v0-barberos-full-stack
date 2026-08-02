@@ -171,9 +171,10 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
 
       const { data: employeesData } = await supabase
         .from('profiles')
-        .select('id, full_name, work_schedule, avatar_url')
+        .select('id, full_name, work_schedule, avatar_url, employee_type')
         .eq('organization_id', orgId)
         .eq('role', 'employee')
+        .eq('employee_type', 'barbero')
 
       setEmployees(employeesData || [])
       setLoading(false)

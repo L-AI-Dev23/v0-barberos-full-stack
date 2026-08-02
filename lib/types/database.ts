@@ -49,6 +49,7 @@ export interface Profile {
   module_permissions: ModulePermissions
   work_schedule: WorkSchedule
   avatar_url?: string | null
+  employee_type?: 'barbero' | 'equipo'
   created_at: string
   updated_at: string
 }

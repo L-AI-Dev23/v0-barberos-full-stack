@@ -8,6 +8,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
@@ -146,6 +153,17 @@ export default function CollaboratorsPage() {
     setSelectedEmployee(prev => prev ? { ...prev, work_schedule: schedule } : null)
     mutateEmployees()
     setSaving(false)
+  }
+
+  async function updateEmployeeType(type: 'barbero' | 'equipo') {
+    if (!selectedEmployee) return
+    await supabase
+      .from('profiles')
+      .update({ employee_type: type })
+      .eq('id', selectedEmployee.id)
+
+    setSelectedEmployee(prev => prev ? { ...prev, employee_type: type } : null)
+    mutateEmployees()
   }
 
   function resetCreateSheet() {
@@ -345,6 +363,25 @@ export default function CollaboratorsPage() {
             <div className="space-y-6 py-4">
               <div>
                 <p className="text-sm text-muted-foreground">{selectedEmployee.email}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-base">Tipo</Label>
+                <Select
+                  value={selectedEmployee.employee_type === 'equipo' ? 'equipo' : 'barbero'}
+                  onValueChange={(v) => updateEmployeeType(v as 'barbero' | 'equipo')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="barbero">Barbero</SelectItem>
+                    <SelectItem value="equipo">Equipo</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Solo los colaboradores marcados como "Barbero" aparecen en la lista para elegir barbero al reservar una cita.
+                </p>
               </div>
 
               <div className="space-y-4">
