@@ -105,6 +105,8 @@ export interface Service {
   incluye?: string | null
   imagen?: string | null
   opciones?: string[] | null
+  variable_price?: boolean
+  commission_percent?: number | null
 }
 
 export interface ProductCategory {

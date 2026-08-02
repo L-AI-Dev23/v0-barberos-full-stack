@@ -67,6 +67,9 @@ export default function POSPage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [variablePriceDialogOpen, setVariablePriceDialogOpen] = useState(false);
+  const [pendingVariableService, setPendingVariableService] = useState<Service | null>(null);
+  const [variablePriceInput, setVariablePriceInput] = useState("");
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [applyCoupon, setApplyCoupon] = useState<boolean>(false);
@@ -313,10 +316,16 @@ export default function POSPage() {
     }
   }
 
-  function addToCart(item: Service | Product, type: "service" | "product") {
-    const existingIndex = cart.findIndex(
-      (c) => c.id === item.id && c.type === type,
-    );
+  function addToCart(
+    item: Service | Product,
+    type: "service" | "product",
+    overridePrice?: number,
+    overrideCommission?: number,
+  ) {
+    const existingIndex =
+      overridePrice === undefined
+        ? cart.findIndex((c) => c.id === item.id && c.type === type)
+        : -1; // Los servicios de precio variable siempre se agregan como línea nueva
 
     if (existingIndex >= 0) {
       const newCart = [...cart];
@@ -328,10 +337,17 @@ export default function POSPage() {
         type,
         name: item.name,
         price:
-          type === "service"
-            ? (item as Service).cost
-            : (item as Product).sale_price,
-        commission: type === "service" ? (item as Service).commission : 0,
+          overridePrice !== undefined
+            ? overridePrice
+            : type === "service"
+              ? (item as Service).cost
+              : (item as Product).sale_price,
+        commission:
+          overrideCommission !== undefined
+            ? overrideCommission
+            : type === "service"
+              ? (item as Service).commission
+              : 0,
         quantity: 1,
         selectedOption: type === "service" && (item as Service).opciones && (item as Service).opciones!.length > 0
           ? (item as Service).opciones![0]
@@ -342,6 +358,31 @@ export default function POSPage() {
       };
       setCart([...cart, cartItem]);
     }
+  }
+
+  function handleItemClick(item: Service | Product, type: "service" | "product") {
+    if (type === "service" && (item as Service).variable_price) {
+      setPendingVariableService(item as Service);
+      setVariablePriceInput("");
+      setVariablePriceDialogOpen(true);
+      return;
+    }
+    addToCart(item, type);
+  }
+
+  function confirmVariablePrice() {
+    if (!pendingVariableService) return;
+    const price = parseFloat(variablePriceInput);
+    if (isNaN(price) || price <= 0) {
+      alert("Ingresa un precio válido.");
+      return;
+    }
+    const pct = pendingVariableService.commission_percent ?? 40;
+    const commission = Number(((price * pct) / 100).toFixed(2));
+    addToCart(pendingVariableService, "service", price, commission);
+    setVariablePriceDialogOpen(false);
+    setPendingVariableService(null);
+    setVariablePriceInput("");
   }
 
   function updateQuantity(index: number, delta: number) {
@@ -553,7 +594,7 @@ export default function POSPage() {
                         : "hover:border-primary"
                     }`}
                     onClick={() =>
-                      addToCart(item, mode === "services" ? "service" : "product")
+                      handleItemClick(item, mode === "services" ? "service" : "product")
                     }
                   >
                     {inCart && (
@@ -571,11 +612,13 @@ export default function POSPage() {
                         )}
                       </div>
                       <p className="text-lg font-bold text-primary">
-                        {formatCurrency(
-                          mode === "services"
-                            ? (item as Service).cost
-                            : (item as Product).sale_price,
-                        )}
+                        {mode === "services" && (item as Service).variable_price
+                          ? "Precio variable"
+                          : formatCurrency(
+                              mode === "services"
+                                ? (item as Service).cost
+                                : (item as Product).sale_price,
+                            )}
                       </p>
                       {mode === "products" && (
                         <p className="text-xs text-muted-foreground">
@@ -984,6 +1027,48 @@ export default function POSPage() {
             >
               {processing ? "Procesando..." : "Confirmar venta"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Variable price prompt */}
+      <Dialog open={variablePriceDialogOpen} onOpenChange={setVariablePriceDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              Precio de {pendingVariableService?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="variable-price-input">
+                Precio para este servicio
+              </Label>
+              <Input
+                id="variable-price-input"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ej. 80.00"
+                value={variablePriceInput}
+                onChange={(e) => setVariablePriceInput(e.target.value)}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                La comisión será el{" "}
+                {pendingVariableService?.commission_percent ?? 40}% de este
+                precio.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setVariablePriceDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={confirmVariablePrice}>Agregar al carrito</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
