@@ -832,7 +832,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                                         : 'hover:border-primary/40'
                                     }`}
                                   >
-                                    <div className="h-28 w-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex items-center justify-center">
+                                    <div className="h-[146px] w-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex items-center justify-center">
                                       <Sparkles className="h-6 w-6 text-violet-500/40" />
                                     </div>
                                     <div className="px-3 py-2.5 text-center">
@@ -852,7 +852,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                                           : 'hover:border-primary/40'
                                       }`}
                                     >
-                                      <div className="h-28 w-full bg-muted overflow-hidden">
+                                      <div className="h-[146px] w-full bg-muted overflow-hidden">
                                         {emp.avatar_url ? (
                                           <img
                                             src={emp.avatar_url}
