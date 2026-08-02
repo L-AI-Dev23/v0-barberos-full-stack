@@ -139,6 +139,10 @@ export interface Sale {
   client_id: string | null
   total: number
   total_commission: number
+  payment_method: 'efectivo' | 'yape' | 'mixto'
+  cash_amount: number
+  yape_amount: number
+  tip_amount: number
   created_at: string
   employee?: Profile
   client?: LoyaltyClient

@@ -19,6 +19,13 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Search,
   Plus,
   Minus,
@@ -26,6 +33,10 @@ import {
   User,
   ShoppingCart,
   Check,
+  Banknote,
+  Smartphone,
+  Split,
+  Heart,
 } from "lucide-react";
 import type {
   Service,
@@ -58,6 +69,15 @@ export default function POSPage() {
   const [applyCoupon, setApplyCoupon] = useState<boolean>(false);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Payment dialog state
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<
+    "efectivo" | "yape" | "mixto"
+  >("efectivo");
+  const [cashAmount, setCashAmount] = useState("");
+  const [yapeAmount, setYapeAmount] = useState("");
+  const [tipAmount, setTipAmount] = useState("");
 
   // Fetch data
   const { data: services } = useSWR<Service[]>(
@@ -198,6 +218,42 @@ export default function POSPage() {
     0,
   );
 
+  // Payment amounts (parsed from string inputs)
+  const parsedCash = parseFloat(cashAmount) || 0;
+  const parsedYape = parseFloat(yapeAmount) || 0;
+  const parsedTip = parseFloat(tipAmount) || 0;
+  const amountPaid =
+    paymentMethod === "efectivo"
+      ? parsedCash
+      : paymentMethod === "yape"
+        ? parsedYape
+        : parsedCash + parsedYape;
+  const paymentDifference = Math.round((total - amountPaid) * 100) / 100;
+  const paymentMatches = Math.abs(paymentDifference) < 0.01;
+
+  function openPaymentDialog() {
+    // Pre-fill the amount(s) with the sale total for convenience
+    setPaymentMethod("efectivo");
+    setCashAmount(total.toFixed(2));
+    setYapeAmount("");
+    setTipAmount("");
+    setPaymentDialogOpen(true);
+  }
+
+  function handlePaymentMethodChange(method: "efectivo" | "yape" | "mixto") {
+    setPaymentMethod(method);
+    if (method === "efectivo") {
+      setCashAmount(total.toFixed(2));
+      setYapeAmount("");
+    } else if (method === "yape") {
+      setYapeAmount(total.toFixed(2));
+      setCashAmount("");
+    } else {
+      setCashAmount("");
+      setYapeAmount("");
+    }
+  }
+
   function addToCart(item: Service | Product, type: "service" | "product") {
     const existingIndex = cart.findIndex(
       (c) => c.id === item.id && c.type === type,
@@ -259,6 +315,10 @@ export default function POSPage() {
           client_id: selectedClient || null,
           total,
           total_commission: totalCommission,
+          payment_method: paymentMethod,
+          cash_amount: paymentMethod === "yape" ? 0 : parsedCash,
+          yape_amount: paymentMethod === "efectivo" ? 0 : parsedYape,
+          tip_amount: parsedTip,
         })
         .select()
         .single();
@@ -334,11 +394,16 @@ export default function POSPage() {
       setCart([]);
       setSelectedClient("");
       setApplyCoupon(false);
+      setPaymentDialogOpen(false);
+      setPaymentMethod("efectivo");
+      setCashAmount("");
+      setYapeAmount("");
+      setTipAmount("");
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
       console.error("Error completing sale:", error);
-      alert("Error completing sale. Please try again.");
+      alert("Error al registrar la venta. Intenta nuevamente.");
     }
 
     setProcessing(false);
@@ -644,11 +709,9 @@ export default function POSPage() {
               className="w-full"
               size="lg"
               disabled={cart.length === 0 || !selectedEmployee || processing}
-              onClick={completeSale}
+              onClick={openPaymentDialog}
             >
-              {processing ? (
-                "Procesando..."
-              ) : success ? (
+              {success ? (
                 <>
                   <Check className="h-4 w-4 mr-2" />
                   ¡Venta completada!
@@ -660,6 +723,160 @@ export default function POSPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Payment Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar pago</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center rounded-lg bg-muted px-4 py-3">
+              <span className="text-muted-foreground">Total a cobrar</span>
+              <span className="text-xl font-bold">{formatCurrency(total)}</span>
+            </div>
+
+            {/* Payment method selector */}
+            <div className="space-y-2">
+              <Label>Método de pago</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={paymentMethod === "efectivo" ? "default" : "outline"}
+                  className="flex flex-col h-16 gap-1"
+                  onClick={() => handlePaymentMethodChange("efectivo")}
+                >
+                  <Banknote className="h-4 w-4" />
+                  <span className="text-xs">Efectivo</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentMethod === "yape" ? "default" : "outline"}
+                  className="flex flex-col h-16 gap-1"
+                  onClick={() => handlePaymentMethodChange("yape")}
+                >
+                  <Smartphone className="h-4 w-4" />
+                  <span className="text-xs">Yape</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentMethod === "mixto" ? "default" : "outline"}
+                  className="flex flex-col h-16 gap-1"
+                  onClick={() => handlePaymentMethodChange("mixto")}
+                >
+                  <Split className="h-4 w-4" />
+                  <span className="text-xs">Mixto</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Amount inputs based on method */}
+            {paymentMethod === "efectivo" && (
+              <div className="space-y-2">
+                <Label>Monto en efectivo</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  value={cashAmount}
+                  onChange={(e) => setCashAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+            )}
+
+            {paymentMethod === "yape" && (
+              <div className="space-y-2">
+                <Label>Monto por Yape</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  value={yapeAmount}
+                  onChange={(e) => setYapeAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+            )}
+
+            {paymentMethod === "mixto" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1 text-xs">
+                    <Banknote className="h-3 w-3" /> Efectivo
+                  </Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1 text-xs">
+                    <Smartphone className="h-3 w-3" /> Yape
+                  </Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    value={yapeAmount}
+                    onChange={(e) => setYapeAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Payment validation feedback */}
+            {!paymentMatches && (
+              <p className="text-sm text-destructive">
+                {paymentDifference > 0
+                  ? `Falta ${formatCurrency(paymentDifference)} por cubrir el total.`
+                  : `El monto ingresado excede el total por ${formatCurrency(Math.abs(paymentDifference))}.`}
+              </p>
+            )}
+
+            {/* Tip - optional, doesn't affect the sale total */}
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="flex items-center gap-2">
+                <Heart className="h-4 w-4" />
+                Propina (opcional)
+              </Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={tipAmount}
+                onChange={(e) => setTipAmount(e.target.value)}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground">
+                La propina no se suma al total de la venta, es un extra para el empleado.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPaymentDialogOpen(false)}
+              disabled={processing}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={completeSale}
+              disabled={!paymentMatches || processing}
+            >
+              {processing ? "Procesando..." : "Confirmar venta"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/context/auth-context'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Wallet, Scissors, TrendingUp } from 'lucide-react'
+import { Wallet, Scissors, TrendingUp, Heart } from 'lucide-react'
 import type { Sale, SaleItem } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
@@ -59,6 +59,7 @@ export default function EarningsPage() {
   )
 
   const totalEarnings = sales?.reduce((sum, sale) => sum + Number(sale.total_commission), 0) || 0
+  const totalTips = sales?.reduce((sum, sale) => sum + Number(sale.tip_amount || 0), 0) || 0
   const totalServices = sales?.reduce((sum, sale) => {
     const serviceItems = sale.items?.filter(i => i.item_type === 'service') || []
     return sum + serviceItems.reduce((s, i) => s + i.quantity, 0)
@@ -98,7 +99,7 @@ export default function EarningsPage() {
       </Tabs>
 
       {/* Tarjetas resumen */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ganancias totales</CardTitle>
@@ -106,6 +107,19 @@ export default function EarningsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{formatCurrency(totalEarnings)}</div>
+            <p className="text-xs text-muted-foreground">
+              {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Propinas</CardTitle>
+            <Heart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{formatCurrency(totalTips)}</div>
             <p className="text-xs text-muted-foreground">
               {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
             </p>
@@ -189,6 +203,12 @@ export default function EarningsPage() {
                         <p className="text-xs text-muted-foreground">
                           Venta: {formatCurrency(sale.total)}
                         </p>
+                        {Number(sale.tip_amount) > 0 && (
+                          <p className="text-xs text-pink-600 flex items-center justify-end gap-1">
+                            <Heart className="h-3 w-3" />
+                            Propina: {formatCurrency(Number(sale.tip_amount))}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-1">
