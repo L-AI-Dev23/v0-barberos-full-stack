@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import useSWR from "swr";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/auth-context";
@@ -164,12 +164,13 @@ export default function POSPage() {
     },
   );
 
-  // Set default employee for non-admin users
-  useState(() => {
-    if (!isAdmin && profile) {
+  // Default the employee selector to the logged-in user (admin or not).
+  // Admins can still change it afterwards; non-admins keep it locked.
+  useEffect(() => {
+    if (profile && !selectedEmployee) {
       setSelectedEmployee(profile.id);
     }
-  });
+  }, [profile, selectedEmployee]);
 
   const categories =
     mode === "services" ? serviceCategories : productCategories;
