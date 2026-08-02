@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
@@ -821,52 +820,55 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
 
                               <div>
                                 <Label>Barbero (opcional)</Label>
-                                <div className="mt-2 grid grid-cols-2 gap-2">
-                                  <button
-                                    type="button"
+                                <div className="mt-2 grid grid-cols-2 gap-3">
+                                  <Card
                                     onClick={() => {
                                       setSelectedEmployee('')
                                       setSelectedTime('')
                                     }}
-                                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-colors ${
+                                    className={`overflow-hidden p-0 py-0 gap-0 cursor-pointer transition-all ${
                                       !selectedEmployee
-                                        ? 'border-primary bg-primary/5'
-                                        : 'hover:border-primary/50'
+                                        ? 'border-primary border-2'
+                                        : 'hover:border-primary/40'
                                     }`}
                                   >
-                                    <Avatar className="h-12 w-12">
-                                      <AvatarFallback>
-                                        <Sparkles className="h-5 w-5 text-muted-foreground" />
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-xs font-medium">Sin preferencia</span>
-                                  </button>
+                                    <div className="h-28 w-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex items-center justify-center">
+                                      <Sparkles className="h-6 w-6 text-violet-500/40" />
+                                    </div>
+                                    <div className="px-3 py-2.5 text-center">
+                                      <p className="text-sm font-semibold truncate">Sin preferencia</p>
+                                    </div>
+                                  </Card>
                                   {employees.map((emp) => (
-                                    <button
+                                    <Card
                                       key={emp.id}
-                                      type="button"
                                       onClick={() => {
                                         setSelectedEmployee(emp.id)
                                         setSelectedTime('')
                                       }}
-                                      className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-colors ${
+                                      className={`overflow-hidden p-0 py-0 gap-0 cursor-pointer transition-all ${
                                         selectedEmployee === emp.id
-                                          ? 'border-primary bg-primary/5'
-                                          : 'hover:border-primary/50'
+                                          ? 'border-primary border-2'
+                                          : 'hover:border-primary/40'
                                       }`}
                                     >
-                                      <Avatar className="h-12 w-12">
+                                      <div className="h-28 w-full bg-muted overflow-hidden">
                                         {emp.avatar_url ? (
-                                          <AvatarImage src={emp.avatar_url} alt={emp.full_name} />
-                                        ) : null}
-                                        <AvatarFallback>
-                                          {emp.full_name?.[0]?.toUpperCase()}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <span className="text-xs font-medium truncate max-w-full">
-                                        {emp.full_name}
-                                      </span>
-                                    </button>
+                                          <img
+                                            src={emp.avatar_url}
+                                            alt={emp.full_name}
+                                            className="h-full w-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex items-center justify-center">
+                                            <span className="text-xs text-muted-foreground/40 font-semibold tracking-widest uppercase select-none">BarberOS</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="px-3 py-2.5 text-center">
+                                        <p className="text-sm font-semibold truncate">{emp.full_name}</p>
+                                      </div>
+                                    </Card>
                                   ))}
                                 </div>
                               </div>
