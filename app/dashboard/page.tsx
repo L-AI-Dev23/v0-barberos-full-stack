@@ -163,6 +163,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Caja: apertura, cierre e historial */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Caja</h2>
+        <CashRegisterSection />
+      </div>
+
       {/* Metric Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -206,6 +212,31 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(netProfit)}</div>
             <p className="text-xs text-muted-foreground">Ingresos - Comisiones</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Payment method totals */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ingresos en efectivo</CardTitle>
+            <Banknote className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(cashRevenue)}</div>
+            <p className="text-xs text-muted-foreground">Cobrado en efectivo hoy</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ingresos por Yape</CardTitle>
+            <Smartphone className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(yapeRevenue)}</div>
+            <p className="text-xs text-muted-foreground">Cobrado por Yape hoy</p>
           </CardContent>
         </Card>
       </div>
@@ -274,37 +305,6 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Payment method totals */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ingresos en efectivo</CardTitle>
-            <Banknote className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(cashRevenue)}</div>
-            <p className="text-xs text-muted-foreground">Cobrado en efectivo hoy</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ingresos por Yape</CardTitle>
-            <Smartphone className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(yapeRevenue)}</div>
-            <p className="text-xs text-muted-foreground">Cobrado por Yape hoy</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Caja: apertura, cierre e historial */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Caja</h2>
-        <CashRegisterSection />
-      </div>
     </div>
   )
 }
