@@ -37,6 +37,7 @@ import {
   Smartphone,
   Split,
   Heart,
+  Lock,
 } from "lucide-react";
 import type {
   Service,
@@ -47,6 +48,7 @@ import type {
   ServiceCategory,
   ProductCategory,
   Organization,
+  CashRegister,
 } from "@/lib/types/database";
 
 function formatCurrency(amount: number) {
@@ -162,6 +164,23 @@ export default function POSPage() {
         .single();
       return data;
     },
+  );
+
+  // Currently open cash register (sales are blocked without one)
+  const { data: openRegister } = useSWR<CashRegister | null>(
+    profile?.organization_id ? "pos-open-register" : null,
+    async () => {
+      const { data } = await supabase
+        .from("cash_registers")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .eq("status", "open")
+        .order("opened_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    { refreshInterval: 30000 },
   );
 
   // Default the employee selector to the logged-in user (admin or not).
@@ -304,6 +323,10 @@ export default function POSPage() {
   async function completeSale() {
     if (!profile?.organization_id || !selectedEmployee || cart.length === 0)
       return;
+    if (!openRegister) {
+      alert("Debes abrir la caja antes de registrar ventas.");
+      return;
+    }
     setProcessing(true);
 
     try {
@@ -320,6 +343,7 @@ export default function POSPage() {
           cash_amount: paymentMethod === "yape" ? 0 : parsedCash,
           yape_amount: paymentMethod === "efectivo" ? 0 : parsedYape,
           tip_amount: parsedTip,
+          cash_register_id: openRegister.id,
         })
         .select()
         .single();
@@ -706,10 +730,28 @@ export default function POSPage() {
               </div>
             </div>
 
+            {!openRegister && (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive mb-3">
+                <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  La caja está cerrada. Ábrela desde el{" "}
+                  <a href="/dashboard" className="underline font-medium">
+                    Panel
+                  </a>{" "}
+                  para poder registrar ventas.
+                </span>
+              </div>
+            )}
+
             <Button
               className="w-full"
               size="lg"
-              disabled={cart.length === 0 || !selectedEmployee || processing}
+              disabled={
+                cart.length === 0 ||
+                !selectedEmployee ||
+                processing ||
+                !openRegister
+              }
               onClick={openPaymentDialog}
             >
               {success ? (

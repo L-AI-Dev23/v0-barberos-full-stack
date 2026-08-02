@@ -52,6 +52,7 @@ export interface ModulePermissions {
   loyalty?: boolean
   appointments?: boolean
   configuration?: boolean
+  cash_register?: boolean
 }
 
 export interface WorkSchedule {
@@ -143,10 +144,31 @@ export interface Sale {
   cash_amount: number
   yape_amount: number
   tip_amount: number
+  cash_register_id: string | null
   created_at: string
   employee?: Profile
   client?: LoyaltyClient
   items?: SaleItem[]
+}
+
+export interface CashRegister {
+  id: string
+  organization_id: string
+  opened_by: string
+  opened_at: string
+  closed_by: string | null
+  closed_at: string | null
+  opening_cash: number
+  opening_yape: number
+  closing_cash: number | null
+  closing_yape: number | null
+  expected_cash: number | null
+  expected_yape: number | null
+  status: 'open' | 'closed'
+  notes: string | null
+  created_at: string
+  opener?: Profile
+  closer?: Profile
 }
 
 export interface SaleItem {

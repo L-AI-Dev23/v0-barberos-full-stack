@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   UserCircle2,
+  Lock,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -36,17 +37,38 @@ const adminNavItems = [
 
 const employeeNavItems = [
   { href: '/dashboard/earnings', label: 'Ganancias', icon: Wallet, permission: null },
+  // Employees with the cash_register permission get a link straight to the
+  // Panel, which shows a focused Caja-only view for non-admins.
+  { href: '/dashboard', label: 'Caja', icon: Lock, permission: 'cash_register' as const },
   { href: '/dashboard/profile', label: 'Perfil', icon: UserCircle2, permission: null },
 ]
+
+function dedupeByHref<T extends { href: string }>(items: T[]): T[] {
+  const seen = new Set<string>()
+  return items.filter(item => {
+    if (seen.has(item.href)) return false
+    seen.add(item.href)
+    return true
+  })
+}
 
 export function Sidebar() {
   const pathname = usePathname()
   const { user, profile, loading, isAdmin, hasPermission, refreshProfile } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  // Treat items with permission: null as always visible (e.g. "Ganancias", "Perfil"),
+  // and defer to hasPermission for everything else.
+  const canSee = (permission: string | null) =>
+    permission === null || hasPermission(permission as Parameters<typeof hasPermission>[0])
+
   const navItems = isAdmin
     ? adminNavItems
-    : adminNavItems.filter(item => hasPermission(item.permission)).concat(employeeNavItems)
+    : dedupeByHref(
+        adminNavItems
+          .filter(item => canSee(item.permission))
+          .concat(employeeNavItems.filter(item => canSee(item.permission)))
+      )
 
   return (
     <>

@@ -22,9 +22,8 @@ import {
   Users,
   TrendingUp,
   Settings,
-  AlertTriangle,
-  User,
-  Heart,
+  Banknote,
+  Smartphone,
 } from 'lucide-react'
 import {
   LineChart,
@@ -35,7 +34,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import type { Sale, LoyaltyClient, Product } from '@/lib/types/database'
+import { CashRegisterSection } from '@/components/dashboard/cash-register-section'
+import type { Sale } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -69,59 +69,6 @@ export default function DashboardPage() {
     }
   )
 
-  // Fetch recent clients
-  const { data: recentClients } = useSWR<(LoyaltyClient & { services_count: number })[]>(
-    profile?.organization_id ? `recent-clients-${today}` : null,
-    async () => {
-      const { data: clientSales } = await supabase
-        .from('sales')
-        .select('client_id, client:loyalty_clients(*)')
-        .eq('organization_id', profile!.organization_id)
-        .gte('created_at', `${today}T00:00:00`)
-        .not('client_id', 'is', null)
-
-      if (!clientSales) return []
-
-      const clientMap = new Map<string, { client: LoyaltyClient; count: number }>()
-      clientSales.forEach((sale) => {
-        if (sale.client) {
-          const existing = clientMap.get(sale.client_id!)
-          if (existing) {
-            existing.count++
-          } else {
-            clientMap.set(sale.client_id!, { client: sale.client as unknown as LoyaltyClient, count: 1 })
-          }
-        }
-      })
-
-      return Array.from(clientMap.values()).map((item) => ({
-        ...item.client,
-        services_count: item.count,
-      }))
-    }
-  )
-
-  // Fetch low stock products
-  const { data: lowStockProducts } = useSWR<Product[]>(
-    profile?.organization_id ? 'low-stock' : null,
-    async () => {
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('min_stock_threshold')
-        .eq('id', profile!.organization_id)
-        .single()
-
-      const threshold = org?.min_stock_threshold || 5
-
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('organization_id', profile!.organization_id)
-        .lte('stock', threshold)
-      return data || []
-    }
-  )
-
   // Load organization settings
   useEffect(() => {
     async function loadSettings() {
@@ -139,12 +86,14 @@ export default function DashboardPage() {
     loadSettings()
   }, [profile?.organization_id, supabase])
   
-  // Redirect employees away from dashboard
+  const canOperateCashRegister = isAdmin || !!profile?.module_permissions?.cash_register
+
+  // Employees without cash-register access don't need this page at all
   useEffect(() => {
-    if (!loading && profile && profile.role !== 'admin') {
+    if (!loading && profile && profile.role !== 'admin' && !canOperateCashRegister) {
       router.push('/dashboard/earnings')
     }
-  }, [profile, router, loading])
+  }, [profile, router, loading, canOperateCashRegister])
 
   if (loading) {
     return (
@@ -162,8 +111,22 @@ export default function DashboardPage() {
     )
   }
 
-  if (profile.role !== 'admin') {
+  if (profile.role !== 'admin' && !canOperateCashRegister) {
     return null
+  }
+
+  // Employees with cash-register access get a focused view: just the caja.
+  // The full financial panel (revenue, commissions, chart) stays admin-only.
+  if (profile.role !== 'admin') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Caja</h1>
+          <p className="text-muted-foreground">Apertura, cierre e historial de caja</p>
+        </div>
+        <CashRegisterSection />
+      </div>
+    )
   }
 
   // Calculate metrics
@@ -174,6 +137,8 @@ export default function DashboardPage() {
   }, 0) || 0
   const totalCommissions = sales?.reduce((sum, sale) => sum + Number(sale.total_commission), 0) || 0
   const netProfit = dailyRevenue - totalCommissions
+  const cashRevenue = sales?.reduce((sum, sale) => sum + Number(sale.cash_amount || 0), 0) || 0
+  const yapeRevenue = sales?.reduce((sum, sale) => sum + Number(sale.yape_amount || 0), 0) || 0
 
   // Generate hourly data for chart
   const hourlyData = generateHourlyData(sales || [], openingTime, closingTime)
@@ -310,83 +275,35 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Bottom Panels */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Recent Clients */}
+      {/* Payment method totals */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Clientes recientes
-            </CardTitle>
-            <CardDescription>Clientes atendidos hoy</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ingresos en efectivo</CardTitle>
+            <Banknote className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {recentClients && recentClients.length > 0 ? (
-              <div className="space-y-3">
-                {recentClients.slice(0, 5).map((client) => (
-                  <div key={client.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{client.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {client.services_count} servicio{client.services_count !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Heart className="h-3 w-3 text-red-500" />
-                      <span>{client.stamps}/5</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Sin clientes hoy
-              </p>
-            )}
+            <div className="text-2xl font-bold">{formatCurrency(cashRevenue)}</div>
+            <p className="text-xs text-muted-foreground">Cobrado en efectivo hoy</p>
           </CardContent>
         </Card>
 
-        {/* Low Stock Alerts */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Alertas de stock bajo
-            </CardTitle>
-            <CardDescription>Productos por debajo del umbral mínimo</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ingresos por Yape</CardTitle>
+            <Smartphone className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {lowStockProducts && lowStockProducts.length > 0 ? (
-              <div className="space-y-3">
-                {lowStockProducts.slice(0, 5).map((product) => (
-                  <div key={product.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Mín: {product.min_stock || 5} unidades
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-amber-600">
-                        {product.stock} disponibles
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Todos los productos tienen buen stock
-              </p>
-            )}
+            <div className="text-2xl font-bold">{formatCurrency(yapeRevenue)}</div>
+            <p className="text-xs text-muted-foreground">Cobrado por Yape hoy</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Caja: apertura, cierre e historial */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Caja</h2>
+        <CashRegisterSection />
       </div>
     </div>
   )

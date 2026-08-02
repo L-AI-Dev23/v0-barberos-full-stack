@@ -38,6 +38,7 @@ const MODULES = [
   { key: 'loyalty', label: 'Fidelidad' },
   { key: 'appointments', label: 'Citas' },
   { key: 'configuration', label: 'Configuración' },
+  { key: 'cash_register', label: 'Caja' },
 ] as const
 
 export default function CollaboratorsPage() {
