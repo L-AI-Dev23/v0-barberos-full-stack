@@ -48,6 +48,7 @@ export interface Profile {
   organization_id: string
   module_permissions: ModulePermissions
   work_schedule: WorkSchedule
+  avatar_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -107,6 +108,7 @@ export interface Service {
   opciones?: string[] | null
   variable_price?: boolean
   commission_percent?: number | null
+  mode?: 'servicio' | 'ejemplo'
 }
 
 export interface ProductCategory {

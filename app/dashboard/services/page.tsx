@@ -57,6 +57,7 @@ export default function ServicesPage() {
   const [serviceIncluye, setServiceIncluye] = useState('')
   const [serviceImagen, setServiceImagen] = useState('')
   const [serviceOpciones, setServiceOpciones] = useState('')
+  const [serviceMode, setServiceMode] = useState<'servicio' | 'ejemplo'>('servicio')
   const [saving, setSaving] = useState(false)
 
   const { data: categories, mutate: mutateCategories } = useSWR<ServiceCategory[]>(
@@ -132,6 +133,7 @@ export default function ServicesPage() {
       incluye: serviceIncluye.trim() || null,
       imagen: serviceImagen.trim() || null,
       opciones: opcionesArray,
+      mode: serviceMode,
     }
 
     if (editingService) {
@@ -169,6 +171,7 @@ export default function ServicesPage() {
     setServiceIncluye('')
     setServiceImagen('')
     setServiceOpciones('')
+    setServiceMode('servicio')
     setEditingService(null)
   }
 
@@ -188,6 +191,7 @@ export default function ServicesPage() {
     setServiceIncluye(svc.incluye || '')
     setServiceImagen(svc.imagen || '')
     setServiceOpciones(svc.opciones ? svc.opciones.join(', ') : '')
+    setServiceMode(svc.mode === 'ejemplo' ? 'ejemplo' : 'servicio')
     setServiceModalOpen(true)
   }
 
@@ -308,6 +312,22 @@ export default function ServicesPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select value={serviceMode} onValueChange={(v) => setServiceMode(v as 'servicio' | 'ejemplo')}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="servicio">Servicio</SelectItem>
+                        <SelectItem value="ejemplo">Ejemplo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      "Ejemplo" ya no se puede vender en el P.O.S. ni agendar en reservas: solo se
+                      muestra como referencia (imagen, nombre y descripción) en la sección "Estilos".
+                    </p>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Incluye (Servicios adicionales / interno)</Label>
                     <Input
                       placeholder="ej., Lavado de cabello, Toalla caliente"
@@ -406,6 +426,11 @@ export default function ServicesPage() {
                     {service.opciones && service.opciones.length > 0 && (
                       <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
                         {service.opciones.length} {service.opciones.length === 1 ? 'opción' : 'opciones'}
+                      </span>
+                    )}
+                    {service.mode === 'ejemplo' && (
+                      <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 shrink-0">
+                        Ejemplo
                       </span>
                     )}
                   </div>

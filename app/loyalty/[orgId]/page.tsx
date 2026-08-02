@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
@@ -656,9 +656,11 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
             <p className="text-sm text-muted-foreground">Elige un servicio para reservar tu próxima visita</p>
           </div>
 
-          {services.length > 0 ? (
+          {(() => {
+            const bookableServices = services.filter((s) => s.mode !== 'ejemplo')
+            return bookableServices.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              {services.map((service) => (
+              {bookableServices.map((service) => (
                 <Dialog key={service.id}>
                   <DialogTrigger asChild>
                     <Card
@@ -750,41 +752,6 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                           ) : (
                             <>
                               <div>
-                                <Label htmlFor="employee">Barbero (opcional)</Label>
-                                <Select
-                                  value={selectedEmployee || 'none'}
-                                  onValueChange={(v) => {
-                                    setSelectedEmployee(v === 'none' ? '' : v)
-                                    setSelectedTime('')
-                                  }}
-                                >
-                                  <SelectTrigger className="mt-2">
-                                    <SelectValue placeholder="Sin preferencia" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">
-                                      <span className="flex items-center gap-2">
-                                        <Sparkles className="h-3.5 w-3.5" />
-                                        Sin preferencia
-                                      </span>
-                                    </SelectItem>
-                                    {employees.map((emp) => (
-                                      <SelectItem key={emp.id} value={emp.id}>
-                                        <span className="flex items-center gap-2">
-                                          <Avatar className="h-5 w-5">
-                                            <AvatarFallback className="text-[10px]">
-                                              {emp.full_name?.[0]?.toUpperCase()}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          {emp.full_name}
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              <div>
                                 <Label htmlFor="date">Fecha</Label>
                                 <Input
                                   id="date"
@@ -842,6 +809,58 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                                 })()}
                               </div>
 
+                              <div>
+                                <Label>Barbero (opcional)</Label>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedEmployee('')
+                                      setSelectedTime('')
+                                    }}
+                                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-colors ${
+                                      !selectedEmployee
+                                        ? 'border-primary bg-primary/5'
+                                        : 'hover:border-primary/50'
+                                    }`}
+                                  >
+                                    <Avatar className="h-12 w-12">
+                                      <AvatarFallback>
+                                        <Sparkles className="h-5 w-5 text-muted-foreground" />
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-xs font-medium">Sin preferencia</span>
+                                  </button>
+                                  {employees.map((emp) => (
+                                    <button
+                                      key={emp.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedEmployee(emp.id)
+                                        setSelectedTime('')
+                                      }}
+                                      className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-colors ${
+                                        selectedEmployee === emp.id
+                                          ? 'border-primary bg-primary/5'
+                                          : 'hover:border-primary/50'
+                                      }`}
+                                    >
+                                      <Avatar className="h-12 w-12">
+                                        {emp.avatar_url ? (
+                                          <AvatarImage src={emp.avatar_url} alt={emp.full_name} />
+                                        ) : null}
+                                        <AvatarFallback>
+                                          {emp.full_name?.[0]?.toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-xs font-medium truncate max-w-full">
+                                        {emp.full_name}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
                               <div className="flex gap-3 justify-end pt-2">
                                 <Button
                                   variant="outline"
@@ -863,14 +882,54 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                 </Dialog>
               ))}
             </div>
-          ) : (
+            ) : (
             <Card>
               <CardContent className="pt-6 text-center text-muted-foreground">
                 No hay servicios disponibles en este momento.
               </CardContent>
             </Card>
-          )}
+            )
+          })()}
         </div>
+
+        {/* Estilos: servicios marcados como "ejemplo", solo de referencia visual */}
+        {services.some((s) => s.mode === 'ejemplo') && (
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold">Estilos</h2>
+              <p className="text-sm text-muted-foreground">Algunos de los estilos que ofrecemos</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {services
+                .filter((s) => s.mode === 'ejemplo')
+                .map((service) => (
+                  <Card key={service.id} className="overflow-hidden py-0 gap-0">
+                    <div className="aspect-video w-full bg-muted overflow-hidden relative">
+                      {service.imagen ? (
+                        <img
+                          src={service.imagen}
+                          alt={service.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/15 via-primary/5 to-transparent">
+                          <Scissors className="h-8 w-8 text-primary/40" />
+                        </div>
+                      )}
+                    </div>
+                    <CardContent className="p-4">
+                      <p className="font-semibold">{service.name}</p>
+                      {service.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                          {service.description}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* Historial como timeline */}
         <Card>

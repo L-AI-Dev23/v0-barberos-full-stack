@@ -93,6 +93,7 @@ export default function POSPage() {
         .from("services")
         .select("*, category:service_categories(*)")
         .eq("organization_id", profile!.organization_id)
+        .eq("mode", "servicio")
         .order("name");
       return data || [];
     },
