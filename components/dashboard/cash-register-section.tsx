@@ -31,6 +31,7 @@ import {
   Smartphone,
   Heart,
   ShoppingBag,
+  History,
 } from 'lucide-react'
 import type { CashRegister, Sale } from '@/lib/types/database'
 
@@ -63,6 +64,7 @@ export function CashRegisterSection() {
 
   const [openDialogOpen, setOpenDialogOpen] = useState(false)
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
   const [openingCash, setOpeningCash] = useState('0')
   const [openingYape, setOpeningYape] = useState('0')
   const [closingCash, setClosingCash] = useState('')
@@ -221,13 +223,19 @@ export function CashRegisterSection() {
               </CardDescription>
             )}
           </div>
-          {currentRegister ? (
-            <Button variant="destructive" onClick={openCloseDialog}>
-              Cerrar caja
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setHistoryDialogOpen(true)}>
+              <History className="h-4 w-4 mr-2" />
+              Historial
             </Button>
-          ) : (
-            <Button onClick={openOpenDialog}>Abrir caja</Button>
-          )}
+            {currentRegister ? (
+              <Button variant="destructive" onClick={openCloseDialog}>
+                Cerrar caja
+              </Button>
+            ) : (
+              <Button onClick={openOpenDialog}>Abrir caja</Button>
+            )}
+          </div>
         </CardHeader>
 
         {currentRegister && (
@@ -389,13 +397,15 @@ export function CashRegisterSection() {
         </DialogContent>
       </Dialog>
 
-      {/* History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Historial de caja</CardTitle>
-          <CardDescription>Revisa la caja de cada día que ha pasado</CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* History dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Historial de caja</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Revisa la caja de cada día que ha pasado
+          </p>
           {history && history.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
@@ -474,8 +484,8 @@ export function CashRegisterSection() {
               Aún no hay cajas registradas.
             </p>
           )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
