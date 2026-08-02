@@ -14,12 +14,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -47,7 +41,10 @@ import {
   MessageSquare,
   Phone,
   Trash2,
-  Plus
+  Plus,
+  UserPlus,
+  Send,
+  ArrowUpDown,
 } from "lucide-react";
 import type {
   LoyaltyClient,
@@ -55,8 +52,10 @@ import type {
   SaleItem,
   Service,
   Organization,
-  WhatsAppRule
+  WhatsAppRule,
+  MessageTemplate,
 } from "@/lib/types/database";
+import { normalizePhone, isValidPhone } from "@/lib/utils/phone";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("es-PE", {
@@ -70,10 +69,13 @@ export default function LoyaltyPage() {
   const supabase = createClient();
 
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "stamps" | "last_visit">(
+    "name",
+  );
   const [selectedClient, setSelectedClient] = useState<LoyaltyClient | null>(
     null,
   );
-  const [clientSheetOpen, setClientSheetOpen] = useState(false);
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [selectedCouponDiscount, setSelectedCouponDiscount] =
@@ -81,7 +83,17 @@ export default function LoyaltyPage() {
   const [savingConfig, setSavingConfig] = useState(false);
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
-  
+
+  // New client dialog
+  const [newClientDialogOpen, setNewClientDialogOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [newClientError, setNewClientError] = useState<string | null>(null);
+  const [savingNewClient, setSavingNewClient] = useState(false);
+
+  // Message template selected in client detail dialog
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
   // WhatsApp States
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [loadingQr, setLoadingQr] = useState(false);
@@ -93,6 +105,11 @@ export default function LoyaltyPage() {
     trigger_event: "booking_created",
     days_delay: null,
     message_template: ""
+  });
+
+  const [newTemplate, setNewTemplate] = useState<Partial<MessageTemplate>>({
+    name: "",
+    message: "",
   });
 
   const loyaltyUrl =
@@ -163,6 +180,20 @@ export default function LoyaltyPage() {
     },
   );
 
+  const { data: messageTemplates, mutate: mutateTemplates } = useSWR<
+    MessageTemplate[]
+  >(
+    profile?.organization_id ? "message-templates" : null,
+    async () => {
+      const { data } = await supabase
+        .from("message_templates")
+        .select("*")
+        .eq("organization_id", profile!.organization_id)
+        .order("name");
+      return data || [];
+    },
+  );
+
   const { data: services } = useSWR<Service[]>(
     profile?.organization_id ? "loyalty-services" : null,
     async () => {
@@ -175,10 +206,22 @@ export default function LoyaltyPage() {
     },
   );
 
-  const filteredClients =
+  const filteredClients = (
     clients?.filter((c) =>
       c.name.toLowerCase().includes(search.toLowerCase()),
-    ) || [];
+    ) || []
+  ).slice().sort((a, b) => {
+    if (sortBy === "stamps") {
+      return b.stamps - a.stamps;
+    }
+    if (sortBy === "last_visit") {
+      // Los que llevan más tiempo sin volver primero (última actualización más antigua)
+      return (
+        new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+      );
+    }
+    return a.name.localeCompare(b.name);
+  });
 
   async function generateQR() {
     if (!profile?.organization_id) return;
@@ -209,9 +252,90 @@ export default function LoyaltyPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function openClientSheet(client: LoyaltyClient) {
+  function openClientDialog(client: LoyaltyClient) {
     setSelectedClient(client);
-    setClientSheetOpen(true);
+    setSelectedTemplateId("");
+    setClientDialogOpen(true);
+  }
+
+  function openNewClientDialog() {
+    setNewClientName("");
+    setNewClientPhone("");
+    setNewClientError(null);
+    setNewClientDialogOpen(true);
+  }
+
+  async function saveNewClient() {
+    if (!profile?.organization_id) return;
+    if (!newClientName.trim()) {
+      setNewClientError("Ingresa el nombre del cliente.");
+      return;
+    }
+    if (!isValidPhone(newClientPhone)) {
+      setNewClientError("Ingresa un número de celular válido (9 dígitos).");
+      return;
+    }
+
+    setSavingNewClient(true);
+    setNewClientError(null);
+
+    const normalized = normalizePhone(newClientPhone.trim());
+
+    const { error } = await supabase.from("loyalty_clients").insert({
+      name: newClientName.trim(),
+      phone: normalized,
+      organization_id: profile.organization_id,
+      stamps: 0,
+    });
+
+    if (error) {
+      setNewClientError(
+        error.code === "23505"
+          ? "Ya existe un cliente registrado con ese número."
+          : "No se pudo registrar al cliente. Intenta de nuevo.",
+      );
+      setSavingNewClient(false);
+      return;
+    }
+
+    setSavingNewClient(false);
+    setNewClientDialogOpen(false);
+    mutateClients();
+  }
+
+  function sendTemplateToClient() {
+    if (!selectedClient?.phone || !selectedTemplateId) return;
+    const template = messageTemplates?.find(
+      (t) => t.id === selectedTemplateId,
+    );
+    if (!template) return;
+
+    const number = normalizePhone(selectedClient.phone);
+    const url = `https://wa.me/${number}?text=${encodeURIComponent(
+      template.message,
+    )}`;
+    window.open(url, "_blank");
+  }
+
+  async function saveNewTemplate() {
+    if (
+      !profile?.organization_id ||
+      !newTemplate.name?.trim() ||
+      !newTemplate.message?.trim()
+    )
+      return;
+    await supabase.from("message_templates").insert({
+      organization_id: profile.organization_id,
+      name: newTemplate.name.trim(),
+      message: newTemplate.message.trim(),
+    });
+    setNewTemplate({ name: "", message: "" });
+    mutateTemplates();
+  }
+
+  async function deleteTemplate(id: string) {
+    await supabase.from("message_templates").delete().eq("id", id);
+    mutateTemplates();
   }
 
   function openConfigModal() {
@@ -332,7 +456,7 @@ export default function LoyaltyPage() {
           <p className="text-muted-foreground">Gestiona tus clientes leales</p>
         </div>
         {isAdmin && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={openMessagesModal} className="md:px-3">
               <MessageSquare className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">Mensajes</span>
@@ -344,6 +468,10 @@ export default function LoyaltyPage() {
             <Button onClick={generateQR} disabled={generating} className="md:px-3">
               <QrCode className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">{generating ? "Generando..." : "Generar código QR"}</span>
+            </Button>
+            <Button onClick={openNewClientDialog} className="md:px-3">
+              <UserPlus className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Cliente</span>
             </Button>
           </div>
         )}
@@ -383,15 +511,33 @@ export default function LoyaltyPage() {
         </Card>
       )}
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar clientes..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+      {/* Search + Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative max-w-md w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar clientes..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select
+          value={sortBy}
+          onValueChange={(v) => setSortBy(v as typeof sortBy)}
+        >
+          <SelectTrigger className="w-full sm:w-[240px]">
+            <ArrowUpDown className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Ordenar por" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">Nombre (A-Z)</SelectItem>
+            <SelectItem value="stamps">Más sellos primero</SelectItem>
+            <SelectItem value="last_visit">
+              Más tiempo sin volver primero
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Clients Grid */}
@@ -400,7 +546,7 @@ export default function LoyaltyPage() {
           <Card
             key={client.id}
             className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => openClientSheet(client)}
+            onClick={() => openClientDialog(client)}
           >
             <CardContent>
               <div className="flex items-center gap-4">
@@ -465,14 +611,28 @@ export default function LoyaltyPage() {
         </div>
       )}
 
-      {/* Client Detail Sheet */}
-      <Sheet open={clientSheetOpen} onOpenChange={setClientSheetOpen}>
-        <SheetContent className="w-full sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{selectedClient?.name}</SheetTitle>
-          </SheetHeader>
+      {/* Client Detail Dialog */}
+      <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
+        <DialogContent className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedClient?.name}</DialogTitle>
+          </DialogHeader>
           {selectedClient && (
-            <div className="space-y-6 py-6">
+            <div className="space-y-6 py-2">
+              {/* Basic info */}
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Phone className="h-4 w-4" />
+                  {selectedClient.phone || "Sin número registrado"}
+                </div>
+                <div className="text-muted-foreground">
+                  Miembro desde{" "}
+                  {new Date(selectedClient.created_at).toLocaleDateString(
+                    "es-PE",
+                  )}
+                </div>
+              </div>
+
               {/* Loyalty Card */}
               <Card>
                 <CardContent className="pt-6">
@@ -512,46 +672,145 @@ export default function LoyaltyPage() {
                 </CardContent>
               </Card>
 
-              {/* Purchase History */}
+              {/* Send template message */}
+              <div className="space-y-2">
+                <Label>Enviar mensaje de WhatsApp</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={selectedTemplateId}
+                    onValueChange={setSelectedTemplateId}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecciona una plantilla" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {messageTemplates?.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                      {messageTemplates?.length === 0 && (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No hay plantillas creadas
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    disabled={!selectedTemplateId || !selectedClient.phone}
+                    onClick={sendTemplateToClient}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Puedes crear plantillas nuevas desde el botón "Mensajes".
+                </p>
+              </div>
+
+              {/* Purchase / service history, matching P.O.S. sales history style */}
               <div>
-                <h3 className="font-semibold mb-3">Historial de compras</h3>
+                <h3 className="font-semibold mb-3">Historial de servicios</h3>
                 <ScrollArea className="h-[300px]">
                   {clientHistory && clientHistory.length > 0 ? (
                     <div className="space-y-3 pr-4">
                       {clientHistory.map((sale) => (
-                        <Card key={sale.id}>
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(sale.created_at).toLocaleDateString()}
-                              </p>
-                              <p className="font-medium">
+                        <div
+                          key={sale.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold">
                                 {formatCurrency(sale.total)}
                               </p>
                             </div>
-                            <div className="space-y-1">
-                              {sale.items?.map((item) => (
-                                <p key={item.id} className="text-sm">
-                                  {item.quantity}x{" "}
-                                  {item.service?.name || item.product?.name}
-                                </p>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {new Date(sale.created_at).toLocaleString(
+                                "es-PE",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
+                              {sale.items && sale.items.length > 0
+                                ? ` · ${sale.items
+                                    .map(
+                                      (item) =>
+                                        `${item.quantity}x ${
+                                          item.service?.name ||
+                                          item.product?.name
+                                        }`,
+                                    )
+                                    .join(", ")}`
+                                : ""}
+                            </p>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">
-                      Sin historial de compras
+                      Sin historial de servicios
                     </p>
                   )}
                 </ScrollArea>
               </div>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Client Dialog */}
+      <Dialog
+        open={newClientDialogOpen}
+        onOpenChange={setNewClientDialogOpen}
+      >
+        <DialogContent className="w-full sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar nuevo cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-client-name">Nombre</Label>
+              <Input
+                id="new-client-name"
+                placeholder="Ej. Juan Pérez"
+                value={newClientName}
+                onChange={(e) => setNewClientName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-client-phone">Número de celular</Label>
+              <Input
+                id="new-client-phone"
+                type="tel"
+                placeholder="Ej. 987654321"
+                value={newClientPhone}
+                onChange={(e) => setNewClientPhone(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                A este número se enviarán los mensajes automáticos de
+                WhatsApp. Si el cliente ya tiene este número registrado,
+                podrá ingresar directamente desde la página de reservas.
+              </p>
+            </div>
+            {newClientError && (
+              <p className="text-sm text-destructive">{newClientError}</p>
+            )}
+            <Button
+              onClick={saveNewClient}
+              disabled={savingNewClient}
+              className="w-full"
+            >
+              {savingNewClient ? "Guardando..." : "Registrar cliente"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Config Modal */}
       <Dialog open={configModalOpen} onOpenChange={setConfigModalOpen}>
@@ -743,6 +1002,87 @@ export default function LoyaltyPage() {
                     </div>
                     <Button onClick={saveNewRule} className="w-full">
                       Añadir Regla
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="border-t pt-8 space-y-4">
+                <h3 className="text-lg font-semibold">
+                  Plantillas de mensajes
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Crea plantillas para enviar manualmente a un cliente desde
+                  su ficha en el programa de fidelidad, listas para enviar
+                  con un clic.
+                </p>
+
+                {/* Templates List */}
+                <div className="space-y-3">
+                  {messageTemplates?.map((template) => (
+                    <Card key={template.id}>
+                      <CardContent className="p-4 flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="font-semibold">{template.name}</p>
+                          <p className="text-sm bg-muted p-2 rounded-md mt-2">
+                            {template.message}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => deleteTemplate(template.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {messageTemplates?.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">
+                      No hay plantillas creadas.
+                    </p>
+                  )}
+                </div>
+
+                {/* Create New Template */}
+                <Card className="border-dashed mt-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Plus className="h-4 w-4" /> Nueva plantilla
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Nombre de la plantilla</Label>
+                      <Input
+                        placeholder="Ej. Descuento"
+                        value={newTemplate.name}
+                        onChange={(e) =>
+                          setNewTemplate({
+                            ...newTemplate,
+                            name: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Mensaje</Label>
+                      <textarea
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="Hola, hoy tenemos un descuento del 20% en todos nuestros servicios..."
+                        value={newTemplate.message}
+                        onChange={(e) =>
+                          setNewTemplate({
+                            ...newTemplate,
+                            message: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <Button onClick={saveNewTemplate} className="w-full">
+                      Añadir plantilla
                     </Button>
                   </CardContent>
                 </Card>

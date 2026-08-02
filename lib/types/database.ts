@@ -31,6 +31,15 @@ export interface WhatsAppRule {
   updated_at: string
 }
 
+export interface MessageTemplate {
+  id: string
+  organization_id: string
+  name: string
+  message: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Profile {
   id: string
   full_name: string
