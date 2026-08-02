@@ -46,7 +46,7 @@ function formatCurrency(amount: number) {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { profile, isAdmin, loading } = useAuth()
+  const { profile, isAdmin, hasPermission, loading } = useAuth()
   const supabase = createClient()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [openingTime, setOpeningTime] = useState('09:00')
@@ -86,7 +86,7 @@ export default function DashboardPage() {
     loadSettings()
   }, [profile?.organization_id, supabase])
   
-  const canOperateCashRegister = isAdmin || !!profile?.module_permissions?.cash_register
+  const canOperateCashRegister = isAdmin || hasPermission('dashboard') || hasPermission('cash_register')
 
   // Employees without cash-register access don't need this page at all
   useEffect(() => {

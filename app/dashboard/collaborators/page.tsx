@@ -59,6 +59,8 @@ export default function CollaboratorsPage() {
   const [generatedCode, setGeneratedCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [pendingEmployeeType, setPendingEmployeeType] = useState<'barbero' | 'equipo'>('barbero')
+  const [savingType, setSavingType] = useState(false)
 
   const { data: employees, mutate: mutateEmployees } = useSWR<Profile[]>(
     profile?.organization_id ? `employees-${profile.organization_id}` : null,
@@ -129,6 +131,7 @@ export default function CollaboratorsPage() {
 
   function openEmployeeModal(emp: Profile) {
     setSelectedEmployee(emp)
+    setPendingEmployeeType(emp.employee_type === 'equipo' ? 'equipo' : 'barbero')
     setEmployeeModalOpen(true)
   }
 
@@ -155,12 +158,16 @@ export default function CollaboratorsPage() {
     setSaving(false)
   }
 
-  async function updateEmployeeType(type: 'barbero' | 'equipo') {
+  async function saveEmployeeType() {
     if (!selectedEmployee) return
-    const { error } = await supabase
+    setSavingType(true)
+    const { data, error } = await supabase
       .from('profiles')
-      .update({ employee_type: type })
+      .update({ employee_type: pendingEmployeeType })
       .eq('id', selectedEmployee.id)
+      .select()
+
+    setSavingType(false)
 
     if (error) {
       console.error('Error updating employee_type:', error)
@@ -168,7 +175,14 @@ export default function CollaboratorsPage() {
       return
     }
 
-    setSelectedEmployee(prev => prev ? { ...prev, employee_type: type } : null)
+    // Con RLS, un update que no cumple la policy no lanza error: simplemente
+    // no afecta filas. Si no volvió ninguna fila, el cambio no se guardó.
+    if (!data || data.length === 0) {
+      alert('No se pudo guardar el tipo de colaborador: no tienes permiso para modificar este perfil (revisa las políticas RLS de la tabla profiles en Supabase).')
+      return
+    }
+
+    setSelectedEmployee(prev => prev ? { ...prev, employee_type: pendingEmployeeType } : null)
     mutateEmployees()
   }
 
@@ -374,8 +388,8 @@ export default function CollaboratorsPage() {
               <div className="space-y-2">
                 <Label className="text-base">Tipo</Label>
                 <Select
-                  value={selectedEmployee.employee_type === 'equipo' ? 'equipo' : 'barbero'}
-                  onValueChange={(v) => updateEmployeeType(v as 'barbero' | 'equipo')}
+                  value={pendingEmployeeType}
+                  onValueChange={(v) => setPendingEmployeeType(v as 'barbero' | 'equipo')}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona tipo" />
@@ -388,6 +402,14 @@ export default function CollaboratorsPage() {
                 <p className="text-xs text-muted-foreground">
                   Solo los colaboradores marcados como "Barbero" aparecen en la lista para elegir barbero al reservar una cita.
                 </p>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={savingType || pendingEmployeeType === (selectedEmployee.employee_type === 'equipo' ? 'equipo' : 'barbero')}
+                  onClick={saveEmployeeType}
+                >
+                  {savingType ? 'Guardando...' : 'Guardar tipo'}
+                </Button>
               </div>
 
               <div className="space-y-4">

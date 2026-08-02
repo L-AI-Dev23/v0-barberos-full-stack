@@ -40,7 +40,8 @@ function formatCurrency(amount: number) {
 }
 
 export default function ServicesPage() {
-  const { profile, isAdmin } = useAuth()
+  const { profile, isAdmin, hasPermission } = useAuth()
+  const canManage = isAdmin || hasPermission('services')
   const supabase = createClient()
   
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
@@ -202,7 +203,7 @@ export default function ServicesPage() {
           <h1 className="text-2xl font-semibold">Servicios</h1>
           <p className="text-muted-foreground">Gestiona los servicios de tu barbería</p>
         </div>
-        {isAdmin && (
+        {canManage && (
           <div className="flex gap-2">
             <Dialog open={categoryModalOpen} onOpenChange={(open) => {
               setCategoryModalOpen(open)
@@ -371,7 +372,7 @@ export default function ServicesPage() {
           {categories.map((cat) => (
             <div key={cat.id} className="flex items-center gap-1 bg-muted px-3 py-1 rounded-full text-sm">
               <span>{cat.name}</span>
-              {isAdmin && (
+              {canManage && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-5 w-5">
@@ -434,7 +435,7 @@ export default function ServicesPage() {
                       </span>
                     )}
                   </div>
-                  {isAdmin && (
+                  {canManage && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted/80 shrink-0">
@@ -495,7 +496,7 @@ export default function ServicesPage() {
 
       {(!services || services.length === 0) && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>Sin servicios aún. {isAdmin && 'Crea tu primer servicio para comenzar.'}</p>
+          <p>Sin servicios aún. {canManage && 'Crea tu primer servicio para comenzar.'}</p>
         </div>
       )}
     </div>

@@ -40,7 +40,8 @@ function formatCurrency(amount: number) {
 }
 
 export default function InventoryPage() {
-  const { profile, isAdmin } = useAuth()
+  const { profile, isAdmin, hasPermission } = useAuth()
+  const canManage = isAdmin || hasPermission('inventory')
   const supabase = createClient()
   
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
@@ -222,7 +223,7 @@ export default function InventoryPage() {
           <h1 className="text-2xl font-bold">Inventario</h1>
           <p className="text-muted-foreground">Gestiona tus productos y stock</p>
         </div>
-        {isAdmin && (
+        {canManage && (
           <div className="flex gap-2">
             <Dialog open={settingsModalOpen} onOpenChange={setSettingsModalOpen}>
               <DialogTrigger asChild>
@@ -409,7 +410,7 @@ export default function InventoryPage() {
           {categories.map((cat) => (
             <div key={cat.id} className="flex items-center gap-1 bg-muted px-3 py-1 rounded-full text-sm">
               <span>{cat.name}</span>
-              {isAdmin && (
+              {canManage && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-5 w-5">
@@ -467,7 +468,7 @@ export default function InventoryPage() {
                         </span>
                       )}
                     </div>
-                    {isAdmin && (
+                    {canManage && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted/80 shrink-0">
@@ -519,7 +520,7 @@ export default function InventoryPage() {
 
       {(!products || products.length === 0) && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>Sin productos aún. {isAdmin && 'Crea tu primer producto para comenzar.'}</p>
+          <p>Sin productos aún. {canManage && 'Crea tu primer producto para comenzar.'}</p>
         </div>
       )}
     </div>
