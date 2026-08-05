@@ -54,6 +54,8 @@ export default function ServicesPage() {
   const [serviceDescription, setServiceDescription] = useState('')
   const [serviceCost, setServiceCost] = useState('')
   const [serviceCommission, setServiceCommission] = useState('')
+  const [servicePriceType, setServicePriceType] = useState<'fijo' | 'variable'>('fijo')
+  const [serviceCommissionPercent, setServiceCommissionPercent] = useState('')
   const [serviceCategoryId, setServiceCategoryId] = useState<string>('')
   const [serviceIncluye, setServiceIncluye] = useState('')
   const [serviceImagen, setServiceImagen] = useState('')
@@ -117,7 +119,9 @@ export default function ServicesPage() {
   }
 
   async function handleSaveService() {
-    if (!profile?.organization_id || !serviceName.trim() || !serviceCost || !serviceCommission) return
+    if (!profile?.organization_id || !serviceName.trim()) return
+    if (servicePriceType === 'fijo' && (!serviceCost || !serviceCommission)) return
+    if (servicePriceType === 'variable' && !serviceCommissionPercent) return
     setSaving(true)
 
     const opcionesArray = serviceOpciones.trim()
@@ -127,8 +131,10 @@ export default function ServicesPage() {
     const serviceData = {
       name: serviceName.trim(),
       description: serviceDescription.trim() || null,
-      cost: parseFloat(serviceCost),
-      commission: parseFloat(serviceCommission),
+      cost: servicePriceType === 'fijo' ? parseFloat(serviceCost) : 0,
+      commission: servicePriceType === 'fijo' ? parseFloat(serviceCommission) : 0,
+      variable_price: servicePriceType === 'variable',
+      commission_percent: servicePriceType === 'variable' ? parseFloat(serviceCommissionPercent) : null,
       category_id: serviceCategoryId || null,
       organization_id: profile.organization_id,
       incluye: serviceIncluye.trim() || null,
@@ -168,6 +174,8 @@ export default function ServicesPage() {
     setServiceDescription('')
     setServiceCost('')
     setServiceCommission('')
+    setServicePriceType('fijo')
+    setServiceCommissionPercent('')
     setServiceCategoryId('')
     setServiceIncluye('')
     setServiceImagen('')
@@ -188,6 +196,8 @@ export default function ServicesPage() {
     setServiceDescription(svc.description || '')
     setServiceCost(svc.cost.toString())
     setServiceCommission(svc.commission.toString())
+    setServicePriceType(svc.variable_price ? 'variable' : 'fijo')
+    setServiceCommissionPercent(svc.commission_percent != null ? svc.commission_percent.toString() : '')
     setServiceCategoryId(svc.category_id || '')
     setServiceIncluye(svc.incluye || '')
     setServiceImagen(svc.imagen || '')
@@ -269,48 +279,81 @@ export default function ServicesPage() {
                       onChange={(e) => setServiceDescription(e.target.value)}
                     />
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  {servicePriceType === 'fijo' ? (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Precio (S/) *</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={serviceCost}
+                          onChange={(e) => setServiceCost(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Comisión (S/) *</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={serviceCommission}
+                          onChange={(e) => setServiceCommission(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Ganancia</Label>
+                        <Input
+                          value={formatCurrency(profit)}
+                          disabled
+                          className="bg-muted"
+                        />
+                      </div>
+                    </div>
+                  ) : (
                     <div className="space-y-2">
-                      <Label>Precio (S/) *</Label>
+                      <Label>Comisión (%) *</Label>
                       <Input
                         type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={serviceCost}
-                        onChange={(e) => setServiceCost(e.target.value)}
+                        step="1"
+                        min="0"
+                        max="100"
+                        placeholder="ej., 40"
+                        value={serviceCommissionPercent}
+                        onChange={(e) => setServiceCommissionPercent(e.target.value)}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        El precio se ingresa al momento de completar la venta en el P.O.S. La comisión
+                        se calculará como este porcentaje sobre el precio ingresado.
+                      </p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Categoría</Label>
+                      <Select value={serviceCategoryId} onValueChange={setServiceCategoryId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories?.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Comisión (S/) *</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={serviceCommission}
-                        onChange={(e) => setServiceCommission(e.target.value)}
-                      />
+                      <Label>Tipo de precio</Label>
+                      <Select value={servicePriceType} onValueChange={(v) => setServicePriceType(v as 'fijo' | 'variable')}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona tipo de precio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fijo">Fijo</SelectItem>
+                          <SelectItem value="variable">Variable</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Ganancia</Label>
-                      <Input
-                        value={formatCurrency(profit)}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Categoría</Label>
-                    <Select value={serviceCategoryId} onValueChange={setServiceCategoryId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories?.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Tipo</Label>
@@ -354,7 +397,11 @@ export default function ServicesPage() {
                   </div>
                   <Button 
                     onClick={handleSaveService} 
-                    disabled={saving || !serviceName.trim() || !serviceCost || !serviceCommission} 
+                    disabled={
+                      saving ||
+                      !serviceName.trim() ||
+                      (servicePriceType === 'fijo' ? (!serviceCost || !serviceCommission) : !serviceCommissionPercent)
+                    } 
                     className="w-full"
                   >
                     {saving ? 'Guardando...' : (editingService ? 'Actualizar' : 'Crear')}

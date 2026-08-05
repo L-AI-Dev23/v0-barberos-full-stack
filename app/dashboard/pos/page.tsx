@@ -84,6 +84,11 @@ export default function POSPage() {
   const [cashAmount, setCashAmount] = useState("");
   const [yapeAmount, setYapeAmount] = useState("");
   const [tipAmount, setTipAmount] = useState("");
+  const [saleDate, setSaleDate] = useState("");
+
+  // Manual discount entered in the cart. Split in equal parts between the
+  // business's cut and the employee's commission (see commission math below).
+  const [manualDiscountInput, setManualDiscountInput] = useState("");
 
   // Fetch data
   const { data: services } = useSWR<Service[]>(
@@ -275,11 +280,26 @@ export default function POSPage() {
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
-  const total = cartTotal - discount;
-  const totalCommission = cart.reduce(
+  const commissionBeforeManualDiscount = cart.reduce(
     (sum, item) => sum + item.commission * item.quantity,
     0,
   );
+
+  // Manual discount: entered as a flat amount. It's split in equal parts
+  // between the price (business's cut) and the commission (employee's cut).
+  // Ej: precio 30, comisión 14, ganancia 16. Descuento de 5 -> precio 25,
+  // comisión 14 - 2.5 = 11.50, ganancia 16 - 2.5 = 13.50.
+  const rawManualDiscount = parseFloat(manualDiscountInput) || 0;
+  const maxManualDiscount = Math.max(cartTotal - discount, 0);
+  const manualDiscount = Math.min(Math.max(rawManualDiscount, 0), maxManualDiscount);
+  const manualDiscountCommissionShare =
+    Math.round(
+      Math.min(manualDiscount / 2, commissionBeforeManualDiscount) * 100,
+    ) / 100;
+
+  const total = cartTotal - discount - manualDiscount;
+  const totalCommission =
+    Math.round((commissionBeforeManualDiscount - manualDiscountCommissionShare) * 100) / 100;
 
   // Payment amounts (parsed from string inputs)
   const parsedCash = parseFloat(cashAmount) || 0;
@@ -300,6 +320,10 @@ export default function POSPage() {
     setCashAmount(total.toFixed(2));
     setYapeAmount("");
     setTipAmount("");
+    // Default sale date to today, but it can be edited before confirming
+    const now = new Date();
+    const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    setSaleDate(localDate.toISOString().slice(0, 10));
     setPaymentDialogOpen(true);
   }
 
@@ -412,6 +436,15 @@ export default function POSPage() {
 
     try {
       // Create sale
+      // Combine the chosen date with the current time, so sales registered
+      // for a past/future date still keep a sensible time-of-day.
+      const now = new Date();
+      const createdAt = saleDate
+        ? new Date(
+            `${saleDate}T${now.toTimeString().slice(0, 8)}`,
+          ).toISOString()
+        : now.toISOString();
+
       const { data: sale, error: saleError } = await supabase
         .from("sales")
         .insert({
@@ -425,6 +458,7 @@ export default function POSPage() {
           yape_amount: paymentMethod === "efectivo" ? 0 : parsedYape,
           tip_amount: parsedTip,
           cash_register_id: openRegister.id,
+          created_at: createdAt,
         })
         .select()
         .single();
@@ -500,6 +534,7 @@ export default function POSPage() {
       setCart([]);
       setSelectedClient("");
       setApplyCoupon(false);
+      setManualDiscountInput("");
       setPaymentDialogOpen(false);
       setPaymentMethod("efectivo");
       setCashAmount("");
@@ -766,6 +801,23 @@ export default function POSPage() {
                 </Select>
               </div>
 
+              {/* Manual discount */}
+              <div className="space-y-2">
+                <Label>Descuento</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={manualDiscountInput}
+                  onChange={(e) => setManualDiscountInput(e.target.value)}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se reparte en partes iguales entre el negocio y la comisión del empleado.
+                </p>
+              </div>
+
               {/* Employee Selector */}
               <div className="space-y-2">
                 <Label>Seleccionar empleado</Label>
@@ -835,6 +887,12 @@ export default function POSPage() {
                   <span>-{formatCurrency(discount)}</span>
                 </div>
               )}
+              {manualDiscount > 0 && (
+                <div className="flex justify-between text-sm mb-1 text-green-600">
+                  <span className="text-muted-foreground">Descuento</span>
+                  <span>-{formatCurrency(manualDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>
@@ -889,6 +947,16 @@ export default function POSPage() {
             <div className="flex justify-between items-center rounded-lg bg-muted px-4 py-3">
               <span className="text-muted-foreground">Total a cobrar</span>
               <span className="text-xl font-bold">{formatCurrency(total)}</span>
+            </div>
+
+            {/* Sale date - defaults to today, but can be changed */}
+            <div className="space-y-2">
+              <Label>Fecha de la venta</Label>
+              <Input
+                type="date"
+                value={saleDate}
+                onChange={(e) => setSaleDate(e.target.value)}
+              />
             </div>
 
             {/* Payment method selector */}
