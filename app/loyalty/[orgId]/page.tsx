@@ -761,6 +761,61 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                           ) : (
                             <>
                               <div>
+                                <Label>Barbero (opcional)</Label>
+                                <div className="mt-2 grid grid-cols-2 gap-3">
+                                  <Card
+                                    onClick={() => {
+                                      setSelectedEmployee('')
+                                      setSelectedTime('')
+                                    }}
+                                    className={`overflow-hidden p-0 py-0 gap-0 cursor-pointer transition-all ${
+                                      !selectedEmployee
+                                        ? 'border-primary border-2'
+                                        : 'hover:border-primary/40'
+                                    }`}
+                                  >
+                                    <div className="h-[146px] w-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex items-center justify-center">
+                                      <Sparkles className="h-6 w-6 text-violet-500/40" />
+                                    </div>
+                                    <div className="px-3 py-2.5 text-center">
+                                      <p className="text-sm font-semibold truncate">Sin preferencia</p>
+                                    </div>
+                                  </Card>
+                                  {employees.map((emp) => (
+                                    <Card
+                                      key={emp.id}
+                                      onClick={() => {
+                                        setSelectedEmployee(emp.id)
+                                        setSelectedTime('')
+                                      }}
+                                      className={`overflow-hidden p-0 py-0 gap-0 cursor-pointer transition-all ${
+                                        selectedEmployee === emp.id
+                                          ? 'border-primary border-2'
+                                          : 'hover:border-primary/40'
+                                      }`}
+                                    >
+                                      <div className="h-[146px] w-full bg-muted overflow-hidden">
+                                        {emp.avatar_url ? (
+                                          <img
+                                            src={emp.avatar_url}
+                                            alt={emp.full_name}
+                                            className="h-full w-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex items-center justify-center">
+                                            <span className="text-xs text-muted-foreground/40 font-semibold tracking-widest uppercase select-none">BarberOS</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="px-3 py-2.5 text-center">
+                                        <p className="text-sm font-semibold truncate">{emp.full_name}</p>
+                                      </div>
+                                    </Card>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div>
                                 <Label htmlFor="date">Fecha</Label>
                                 <Input
                                   id="date"
@@ -816,61 +871,6 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                                     </div>
                                   )
                                 })()}
-                              </div>
-
-                              <div>
-                                <Label>Barbero (opcional)</Label>
-                                <div className="mt-2 grid grid-cols-2 gap-3">
-                                  <Card
-                                    onClick={() => {
-                                      setSelectedEmployee('')
-                                      setSelectedTime('')
-                                    }}
-                                    className={`overflow-hidden p-0 py-0 gap-0 cursor-pointer transition-all ${
-                                      !selectedEmployee
-                                        ? 'border-primary border-2'
-                                        : 'hover:border-primary/40'
-                                    }`}
-                                  >
-                                    <div className="h-[146px] w-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex items-center justify-center">
-                                      <Sparkles className="h-6 w-6 text-violet-500/40" />
-                                    </div>
-                                    <div className="px-3 py-2.5 text-center">
-                                      <p className="text-sm font-semibold truncate">Sin preferencia</p>
-                                    </div>
-                                  </Card>
-                                  {employees.map((emp) => (
-                                    <Card
-                                      key={emp.id}
-                                      onClick={() => {
-                                        setSelectedEmployee(emp.id)
-                                        setSelectedTime('')
-                                      }}
-                                      className={`overflow-hidden p-0 py-0 gap-0 cursor-pointer transition-all ${
-                                        selectedEmployee === emp.id
-                                          ? 'border-primary border-2'
-                                          : 'hover:border-primary/40'
-                                      }`}
-                                    >
-                                      <div className="h-[146px] w-full bg-muted overflow-hidden">
-                                        {emp.avatar_url ? (
-                                          <img
-                                            src={emp.avatar_url}
-                                            alt={emp.full_name}
-                                            className="h-full w-full object-cover"
-                                          />
-                                        ) : (
-                                          <div className="w-full h-full bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-pink-500/10 flex items-center justify-center">
-                                            <span className="text-xs text-muted-foreground/40 font-semibold tracking-widest uppercase select-none">BarberOS</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                      <div className="px-3 py-2.5 text-center">
-                                        <p className="text-sm font-semibold truncate">{emp.full_name}</p>
-                                      </div>
-                                    </Card>
-                                  ))}
-                                </div>
                               </div>
 
                               <div className="flex gap-3 justify-end pt-2">
