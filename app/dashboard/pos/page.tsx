@@ -39,6 +39,7 @@ import {
   Heart,
   Lock,
   History,
+  Settings,
 } from "lucide-react";
 import type {
   Service,
@@ -86,9 +87,14 @@ export default function POSPage() {
   const [tipAmount, setTipAmount] = useState("");
   const [saleDate, setSaleDate] = useState("");
 
-  // Manual discount entered in the cart. Split in equal parts between the
-  // business's cut and the employee's commission (see commission math below).
+  // Manual discount entered in the cart. Split between the business's cut
+  // and the employee's commission according to organization.discount_split_business_percent.
   const [manualDiscountInput, setManualDiscountInput] = useState("");
+
+  // Discount split configuration dialog (negocio % / barbero %)
+  const [splitConfigOpen, setSplitConfigOpen] = useState(false);
+  const [splitBusinessInput, setSplitBusinessInput] = useState("50");
+  const [savingSplitConfig, setSavingSplitConfig] = useState(false);
 
   // Fetch data
   const { data: services } = useSWR<Service[]>(
@@ -164,7 +170,7 @@ export default function POSPage() {
     },
   );
 
-  const { data: organization } = useSWR<Organization>(
+  const { data: organization, mutate: mutateOrganization } = useSWR<Organization>(
     profile?.organization_id ? "pos-org" : null,
     async () => {
       const { data } = await supabase
@@ -192,6 +198,38 @@ export default function POSPage() {
     },
     { refreshInterval: 30000 },
   );
+
+  useEffect(() => {
+    if (organization) {
+      setSplitBusinessInput(
+        String(organization.discount_split_business_percent ?? 50),
+      );
+    }
+  }, [organization?.discount_split_business_percent]);
+
+  async function saveSplitConfig() {
+    if (!profile?.organization_id) return;
+    const value = parseFloat(splitBusinessInput);
+    if (isNaN(value) || value < 0 || value > 100) {
+      alert("Ingresa un porcentaje válido entre 0 y 100.");
+      return;
+    }
+    setSavingSplitConfig(true);
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({ discount_split_business_percent: value })
+        .eq("id", profile.organization_id);
+      if (error) throw error;
+      mutateOrganization();
+      setSplitConfigOpen(false);
+    } catch (error) {
+      console.error("Error saving split config:", error);
+      alert("No se pudo guardar la configuración. Intenta nuevamente.");
+    } finally {
+      setSavingSplitConfig(false);
+    }
+  }
 
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
@@ -285,16 +323,21 @@ export default function POSPage() {
     0,
   );
 
-  // Manual discount: entered as a flat amount. It's split in equal parts
-  // between the price (business's cut) and the commission (employee's cut).
-  // Ej: precio 30, comisión 14, ganancia 16. Descuento de 5 -> precio 25,
-  // comisión 14 - 2.5 = 11.50, ganancia 16 - 2.5 = 13.50.
+  // Manual discount: entered as a flat amount. It's split between the price
+  // (business's cut) and the commission (employee's cut) according to the
+  // configured discount_split_business_percent (business % / barbero %).
+  // Ej: negocio 60 / barbero 40, descuento de 5 -> negocio absorbe 3, barbero 2.
+  const businessSplitPercent = organization?.discount_split_business_percent ?? 50;
+  const barberSplitPercent = 100 - businessSplitPercent;
   const rawManualDiscount = parseFloat(manualDiscountInput) || 0;
   const maxManualDiscount = Math.max(cartTotal - discount, 0);
   const manualDiscount = Math.min(Math.max(rawManualDiscount, 0), maxManualDiscount);
   const manualDiscountCommissionShare =
     Math.round(
-      Math.min(manualDiscount / 2, commissionBeforeManualDiscount) * 100,
+      Math.min(
+        manualDiscount * (barberSplitPercent / 100),
+        commissionBeforeManualDiscount,
+      ) * 100,
     ) / 100;
 
   const total = cartTotal - discount - manualDiscount;
@@ -685,14 +728,24 @@ export default function POSPage() {
             <ShoppingCart className="h-5 w-5" />
             Carrito
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setHistoryDialogOpen(true)}
-          >
-            <History className="h-4 w-4 mr-1.5" />
-            Historial
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSplitConfigOpen(true)}
+            >
+              <Settings className="h-4 w-4 mr-1.5" />
+              Configuración
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHistoryDialogOpen(true)}
+            >
+              <History className="h-4 w-4 mr-1.5" />
+              Historial
+            </Button>
+          </div>
         </CardHeader>
         
         {/* Contenedor principal del carrito que usa flex y oculta desbordamientos externos */}
@@ -814,7 +867,7 @@ export default function POSPage() {
                   placeholder="0.00"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Se reparte en partes iguales entre el negocio y la comisión del empleado.
+                  Se reparte {businessSplitPercent}% negocio / {barberSplitPercent}% comisión del empleado.
                 </p>
               </div>
 
@@ -1183,21 +1236,62 @@ export default function POSPage() {
                       {sale.client?.name ? ` · ${sale.client.name}` : ""}
                     </p>
                   </div>
-                  {isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive shrink-0"
-                      disabled={deletingSaleId === sale.id}
-                      onClick={() => handleDeleteSale(sale.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive shrink-0"
+                    disabled={deletingSaleId === sale.id}
+                    onClick={() => handleDeleteSale(sale.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Discount split configuration dialog */}
+      <Dialog open={splitConfigOpen} onOpenChange={setSplitConfigOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configuración de descuento</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Define cómo se reparte el descuento manual del carrito entre el
+            negocio y la comisión del barbero.
+          </p>
+          <div className="space-y-2">
+            <Label>Negocio (%)</Label>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max="100"
+              step="1"
+              value={splitBusinessInput}
+              onChange={(e) => setSplitBusinessInput(e.target.value)}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Barbero:{" "}
+            <span className="font-semibold text-foreground">
+              {100 - (parseFloat(splitBusinessInput) || 0)}%
+            </span>
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSplitConfigOpen(false)}
+              disabled={savingSplitConfig}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={saveSplitConfig} disabled={savingSplitConfig}>
+              {savingSplitConfig ? "Guardando..." : "Guardar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

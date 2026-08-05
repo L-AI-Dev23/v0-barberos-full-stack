@@ -6,6 +6,7 @@ export interface Organization {
   logo_url: string | null
   coupon_service_id: string | null
   coupon_discount_percent: number | null
+  discount_split_business_percent: number | null
   whatsapp_api_url: string | null
   whatsapp_api_key: string | null
   whatsapp_instance_name: string | null

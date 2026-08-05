@@ -91,14 +91,31 @@ export function CashRegisterSection() {
     { refreshInterval: 30000 },
   )
 
-  // Sales made under the current open register, to compute running totals
+  // Sales made under the current open register, to compute running totals.
+  // IMPORTANT: we filter by the register's calendar day (not just cash_register_id),
+  // because a sale can be manually backdated (e.g. registering a sale from 2 days
+  // ago) while today's register is open. That backdated sale still gets tagged
+  // with the current register's id, but it must NOT affect today's expected cash —
+  // the register only reflects what happened on the day it was opened.
+  const registerDayBounds = currentRegister
+    ? (() => {
+        const start = new Date(currentRegister.opened_at)
+        start.setHours(0, 0, 0, 0)
+        const end = new Date(currentRegister.opened_at)
+        end.setHours(23, 59, 59, 999)
+        return { start: start.toISOString(), end: end.toISOString() }
+      })()
+    : null
+
   const { data: registerSales } = useSWR<Sale[]>(
-    currentRegister?.id ? `cash-register-sales-${currentRegister.id}` : null,
+    currentRegister?.id ? `cash-register-sales-${currentRegister.id}-${registerDayBounds?.start}` : null,
     async () => {
       const { data } = await supabase
         .from('sales')
         .select('*')
         .eq('cash_register_id', currentRegister!.id)
+        .gte('created_at', registerDayBounds!.start)
+        .lte('created_at', registerDayBounds!.end)
       return data || []
     },
   )
