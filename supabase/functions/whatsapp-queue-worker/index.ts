@@ -164,8 +164,8 @@ async function sendOne(
   message = message.replace(/{nombre_cliente}/g, appointment.client.name)
 
   const apptDate = new Date(appointment.appointment_time)
-  const timeStr = apptDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true })
-  const dateStr = apptDate.toLocaleDateString('es-PE')
+  const timeStr = apptDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Lima' })
+  const dateStr = apptDate.toLocaleDateString('es-PE', { timeZone: 'America/Lima' })
   message = message.replace(/{fecha_cita}/g, dateStr)
   message = message.replace(/{hora_cita}/g, timeStr)
 

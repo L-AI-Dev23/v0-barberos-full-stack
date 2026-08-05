@@ -84,8 +84,8 @@ export async function sendWhatsAppMessage(appointmentId: string, event: WhatsApp
   message = message.replace(/{nombre_cliente}/g, appointment.client.name)
 
   const apptDate = new Date(appointment.appointment_time)
-  const timeStr = apptDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true })
-  const dateStr = apptDate.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const timeStr = apptDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Lima' })
+  const dateStr = apptDate.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' })
 
   message = message.replace(/{fecha_cita}/g, dateStr)
   message = message.replace(/{hora_cita}/g, timeStr)
