@@ -30,6 +30,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check, Heart, List, CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Appointment, Service, Profile, LoyaltyClient } from '@/lib/types/database'
+import { triggerBookingWhatsApp } from '@/lib/actions/whatsapp'
 import {
   startOfMonth,
   endOfMonth,
@@ -171,7 +172,10 @@ export default function AppointmentsPage() {
         .select('*')
         .eq('organization_id', profile!.organization_id)
         .order('name', { ascending: true })
-      return data || []
+      // Solo servicios reales; los que tienen mode='ejemplo' son plantillas de ejemplo
+      // y no deben poder agendarse. Los que no tienen 'mode' definido (registros antiguos)
+      // se consideran servicios normales.
+      return (data || []).filter((s) => s.mode !== 'ejemplo')
     }
   )
 
@@ -182,6 +186,7 @@ export default function AppointmentsPage() {
         .from('profiles')
         .select('*')
         .eq('organization_id', profile!.organization_id)
+        .eq('employee_type', 'barbero')
         .order('full_name', { ascending: true })
       return data || []
     }
@@ -230,7 +235,7 @@ export default function AppointmentsPage() {
 
     const appointmentTime = new Date(`${newApptDate}T${newApptTime}`)
 
-    const { error } = await supabase
+    const { data: newAppt, error } = await supabase
       .from('appointments')
       .insert({
         organization_id: profile.organization_id,
@@ -242,12 +247,20 @@ export default function AppointmentsPage() {
         notes: newApptNotes || null,
         opcion_seleccionada: newApptOption || null,
       })
+      .select('id')
+      .single()
 
     setNewApptSubmitting(false)
 
     if (error) {
       setNewApptError('No se pudo crear la cita. Intenta de nuevo.')
       return
+    }
+
+    // Igual que en la página pública de reservas: al crear la cita manualmente
+    // desde el dashboard, encolamos el mensaje de WhatsApp de "cita creada".
+    if (newAppt?.id) {
+      triggerBookingWhatsApp(newAppt.id, profile.organization_id).catch(() => {})
     }
 
     resetNewApptForm()
