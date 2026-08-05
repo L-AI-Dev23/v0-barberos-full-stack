@@ -133,7 +133,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   const [employees, setEmployees] = useState<Profile[]>([])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedEmployee, setSelectedEmployee] = useState('')
-  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
   const [selectedTime, setSelectedTime] = useState('')
   const [bookingSubmitting, setBookingSubmitting] = useState(false)
   const [bookingSuccess, setBookingSuccess] = useState(false)
@@ -373,7 +373,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       setTimeout(() => {
         setSelectedService(null)
         setSelectedEmployee('')
-        setSelectedDate('')
+        setSelectedDate(new Date().toISOString().split('T')[0])
         setSelectedTime('')
         setBookingSuccess(false)
         reloadAppointments(client.id)
