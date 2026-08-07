@@ -114,7 +114,7 @@ export default function LoyaltyPage() {
 
   const loyaltyUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/loyalty/${profile?.organization_id}`
+      ? `${window.location.origin}/sedes`
       : "";
 
   const { data: clients, mutate: mutateClients } = useSWR<LoyaltyClient[]>(

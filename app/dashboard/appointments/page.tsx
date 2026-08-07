@@ -99,7 +99,7 @@ export default function AppointmentsPage() {
   const [newApptNotes, setNewApptNotes] = useState('')
 
   const bookingUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/loyalty/${profile?.organization_id}` 
+    ? `${window.location.origin}/sedes` 
     : ''
 
   const { data: appointments, mutate: mutateAppointments } = useSWR<(Appointment & { 
