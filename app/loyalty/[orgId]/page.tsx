@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, use } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,7 @@ import {
   Clock,
   CheckCircle2,
   Sparkles,
+  MapPin,
 } from 'lucide-react'
 import type {
   PublicOrganization,
@@ -45,7 +47,6 @@ import type {
 } from '@/lib/types/database'
 import { triggerBookingWhatsApp } from '@/lib/actions/whatsapp'
 import { normalizePhone, isValidPhone } from '@/lib/utils/phone'
-import { NotificationPrompt } from '@/components/notification-prompt'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -118,6 +119,7 @@ function getAvailableRange(
 export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = use(params)
   const supabase = createClient()
+  const router = useRouter()
 
   const [organization, setOrganization] = useState<PublicOrganization | null>(null)
   const [client, setClient] = useState<LoyaltyClient | null>(null)
@@ -586,7 +588,22 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-        <NotificationPrompt organizationId={organization.id} clientId={client.id} />
+        <Card className="overflow-hidden">
+          <CardContent className="flex items-center justify-between gap-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                <MapPin className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium leading-tight">¿Reservar en otra sede?</p>
+                <p className="text-sm text-muted-foreground">Cambia de sucursal cuando quieras.</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => router.push('/sedes')}>
+              Cambiar sede
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Fidelidad + cupones en una sola tarjeta */}
         <Card className="overflow-hidden">
