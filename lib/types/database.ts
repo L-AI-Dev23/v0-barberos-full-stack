@@ -51,6 +51,7 @@ export interface Profile {
   work_schedule: WorkSchedule
   avatar_url?: string | null
   employee_type?: 'barbero' | 'equipo'
+  is_active?: boolean
   created_at: string
   updated_at: string
 }

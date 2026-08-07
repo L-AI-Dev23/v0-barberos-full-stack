@@ -187,6 +187,7 @@ export default function AppointmentsPage() {
         .select('*')
         .eq('organization_id', profile!.organization_id)
         .eq('employee_type', 'barbero')
+        .eq('is_active', true)
         .order('full_name', { ascending: true })
       return data || []
     }

@@ -24,6 +24,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { UserPlus, Copy, Check, Calendar, Trash2, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Profile, InvitationCode, ModulePermissions } from '@/lib/types/database'
 
 const WORK_DAYS = [
@@ -70,6 +71,7 @@ export default function CollaboratorsPage() {
         .select('*')
         .eq('organization_id', profile!.organization_id)
         .eq('role', 'employee')
+        .eq('is_active', true)
         .order('full_name')
       return data || []
     },
@@ -137,9 +139,23 @@ export default function CollaboratorsPage() {
 
   async function deleteEmployee(id: string) {
     if (!confirm('Remove this employee? They will lose access to the system.')) return
-    
-    // Delete the profile (auth user remains but can't access this org)
-    await supabase.from('profiles').delete().eq('id', id)
+
+    // Soft delete: el empleado casi siempre tiene citas, ventas o registros de
+    // fidelidad asociados (foreign keys), así que un DELETE físico falla por
+    // la restricción de integridad referencial. Por eso lo desactivamos en
+    // vez de borrarlo, y así conservamos el historial.
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_active: false })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error al eliminar empleado:', error)
+      toast.error('No se pudo eliminar el empleado: ' + error.message)
+      return
+    }
+
+    toast.success('Empleado eliminado')
     mutateEmployees()
     setEmployeeModalOpen(false)
     setSelectedEmployee(null)

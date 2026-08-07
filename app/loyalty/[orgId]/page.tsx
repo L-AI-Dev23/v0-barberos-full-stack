@@ -174,6 +174,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
         .eq('organization_id', orgId)
         .eq('role', 'employee')
         .eq('employee_type', 'barbero')
+        .eq('is_active', true)
 
       setEmployees(employeesData || [])
       setLoading(false)
