@@ -30,7 +30,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { Calendar, Clock, MapPin, User, Trash2, CheckCircle, XCircle, AlertCircle, QrCode, Copy, Check, Heart, List, CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Appointment, Service, Profile, LoyaltyClient } from '@/lib/types/database'
-import { triggerBookingWhatsApp } from '@/lib/actions/whatsapp'
+import { triggerBookingWhatsApp, triggerAppointmentEmployeePush } from '@/lib/actions/whatsapp'
 import {
   startOfMonth,
   endOfMonth,
@@ -262,6 +262,9 @@ export default function AppointmentsPage() {
     // desde el dashboard, encolamos el mensaje de WhatsApp de "cita creada".
     if (newAppt?.id) {
       triggerBookingWhatsApp(newAppt.id, profile.organization_id).catch(() => {})
+      // Avisa por push solo al barbero asignado a esta cita (si tiene la
+      // notificación activada en su dispositivo).
+      triggerAppointmentEmployeePush(newAppt.id, profile.organization_id).catch(() => {})
     }
 
     resetNewApptForm()

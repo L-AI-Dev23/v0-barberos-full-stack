@@ -25,24 +25,25 @@ export interface PushPayload {
 }
 
 /**
- * Envía una notificación push a todas las suscripciones activas de un cliente de fidelidad.
- * Elimina automáticamente las suscripciones que ya expiraron (410/404).
+ * Envía una notificación push únicamente a los dispositivos suscritos de UN
+ * empleado (barbero). Otros empleados de la misma organización no reciben nada,
+ * porque se filtra estrictamente por employee_id en la consulta.
  */
-export async function sendPushToClient(clientId: string, payload: PushPayload) {
+export async function sendPushToEmployee(employeeId: string, payload: PushPayload) {
   ensureConfigured()
   const supabase = createServiceClient()
 
   const { data: subs, error } = await supabase
     .from('push_subscriptions')
     .select('id, endpoint, p256dh, auth')
-    .eq('client_id', clientId)
+    .eq('employee_id', employeeId)
 
   if (error) {
     return { success: false as const, error: 'Error al buscar suscripciones' }
   }
 
   if (!subs || subs.length === 0) {
-    return { success: false as const, error: 'El cliente no tiene notificaciones push activadas' }
+    return { success: false as const, error: 'El empleado no tiene notificaciones push activadas' }
   }
 
   let sent = 0
@@ -61,6 +62,8 @@ export async function sendPushToClient(clientId: string, payload: PushPayload) {
         sent++
       } catch (err: unknown) {
         const statusCode = (err as { statusCode?: number })?.statusCode
+        // 404/410 = la suscripción ya no existe (el usuario desinstaló, borró
+        // datos del navegador, etc.). La limpiamos para no seguir intentando.
         if (statusCode === 404 || statusCode === 410) {
           expiredIds.push(sub.id)
         }

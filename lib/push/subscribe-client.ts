@@ -18,12 +18,15 @@ export type PushSetupResult =
   | { status: 'subscribed' }
 
 /**
- * Pide permiso de notificaciones al usuario, registra el service worker,
- * se suscribe al push manager y guarda la suscripción en el backend.
+ * Pide permiso de notificaciones a ESTE navegador/dispositivo, registra el
+ * service worker, se suscribe al push manager del navegador y guarda esa
+ * suscripción vinculada al empleado logueado. A partir de aquí, este
+ * dispositivo específico recibirá push solo cuando se le asignen citas
+ * a este empleado.
  */
-export async function setupPushNotifications(
+export async function setupEmployeePushNotifications(
   organizationId: string,
-  clientId: string,
+  employeeId: string,
 ): Promise<PushSetupResult> {
   if (typeof window === 'undefined') return { status: 'unsupported' }
 
@@ -58,7 +61,7 @@ export async function setupPushNotifications(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         organizationId,
-        clientId,
+        employeeId,
         subscription: subscription.toJSON(),
       }),
     })
@@ -74,8 +77,25 @@ export async function setupPushNotifications(
   }
 }
 
-/** Revisa si el navegador ya tiene permiso concedido/denegado sin pedirlo. */
+/** Revisa si este navegador ya tiene permiso concedido/denegado, sin pedirlo. */
 export function getNotificationPermissionState(): NotificationPermission | 'unsupported' {
   if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported'
   return Notification.permission
+}
+
+/** Cancela la suscripción de este navegador (deja de recibir push). */
+export async function disableEmployeePushNotifications(employeeId: string): Promise<void> {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+
+  const registration = await navigator.serviceWorker.getRegistration('/sw.js')
+  const subscription = await registration?.pushManager.getSubscription()
+
+  if (subscription) {
+    await fetch('/api/push/subscribe', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId, endpoint: subscription.endpoint }),
+    })
+    await subscription.unsubscribe()
+  }
 }

@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { UserCircle2, Upload, Calendar, Check } from 'lucide-react'
 import type { Profile } from '@/lib/types/database'
+import { EmployeePushToggle } from '@/components/dashboard/employee-push-toggle'
 
 export default function ProfilePage() {
   const { profile, refreshProfile } = useAuth()
@@ -123,6 +124,10 @@ export default function ProfilePage() {
         <h1 className="text-2xl font-bold">Mi Perfil</h1>
         <p className="text-muted-foreground">Gestiona tu foto y horario de trabajo</p>
       </div>
+
+      {profile?.id && profile?.organization_id && (
+        <EmployeePushToggle organizationId={profile.organization_id} employeeId={profile.id} />
+      )}
 
       <Card>
         <CardHeader>

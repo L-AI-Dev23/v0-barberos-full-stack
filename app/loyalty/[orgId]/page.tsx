@@ -45,7 +45,7 @@ import type {
   Profile,
   Appointment,
 } from '@/lib/types/database'
-import { triggerBookingWhatsApp } from '@/lib/actions/whatsapp'
+import { triggerBookingWhatsApp, triggerAppointmentEmployeePush } from '@/lib/actions/whatsapp'
 import { normalizePhone, isValidPhone } from '@/lib/utils/phone'
 
 function formatCurrency(amount: number) {
@@ -371,6 +371,9 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
 
       if (newAppt?.id) {
         triggerBookingWhatsApp(newAppt.id, orgId).catch(() => { })
+        // Avisa por push solo al barbero elegido en la reserva (si activó
+        // notificaciones). Si el cliente no eligió barbero, no se envía nada.
+        triggerAppointmentEmployeePush(newAppt.id, orgId).catch(() => { })
       }
 
       setTimeout(() => {
