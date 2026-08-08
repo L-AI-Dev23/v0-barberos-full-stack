@@ -99,7 +99,7 @@ export default function InventoryPage() {
     }
   )
 
-  const profit = (Number(productSalePrice) || 0) - (Number(productCostPrice) || 0)
+  const profit = (Number(productSalePrice) || 0) - (Number(productCostPrice) || 0) - (Number(productCommission) || 0)
 
   async function handleSaveCategory() {
     if (!profile?.organization_id || !categoryName.trim()) return
@@ -356,7 +356,7 @@ export default function InventoryPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Comisión barbero (S/)</Label>
+                      <Label>Comisión (S/)</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -519,7 +519,7 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ganancia</p>
-                    <p className="font-semibold text-green-600 dark:text-green-500 text-sm mt-0.5">{formatCurrency(product.sale_price - product.cost_price)}</p>
+                    <p className="font-semibold text-green-600 dark:text-green-500 text-sm mt-0.5">{formatCurrency(product.sale_price - product.cost_price - (product.commission || 0))}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Comisión</p>
