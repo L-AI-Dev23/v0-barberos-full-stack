@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/context/auth-context'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Wallet, Scissors, TrendingUp, Heart } from 'lucide-react'
+import { Wallet, Scissors, TrendingUp, Heart, Package } from 'lucide-react'
 import type { Sale, SaleItem } from '@/lib/types/database'
 
 function formatCurrency(amount: number) {
@@ -64,21 +64,26 @@ export default function EarningsPage() {
     const serviceItems = sale.items?.filter(i => i.item_type === 'service') || []
     return sum + serviceItems.reduce((s, i) => s + i.quantity, 0)
   }, 0) || 0
+  const totalProducts = sales?.reduce((sum, sale) => {
+    const productItems = sale.items?.filter(i => i.item_type === 'product') || []
+    return sum + productItems.reduce((s, i) => s + i.quantity, 0)
+  }, 0) || 0
 
-  // Group sales by service for breakdown
-  const serviceBreakdown = sales?.reduce((acc, sale) => {
+  // Agrupa por servicio Y por producto para el desglose de comisiones:
+  // ambos generan comisión al empleado de la misma forma.
+  const itemBreakdown = sales?.reduce((acc, sale) => {
     sale.items?.forEach(item => {
-      if (item.item_type === 'service' && item.service) {
-        const key = item.service.name
-        if (!acc[key]) {
-          acc[key] = { count: 0, commission: 0 }
-        }
-        acc[key].count += item.quantity
-        acc[key].commission += Number(item.commission) * item.quantity
+      const name = item.item_type === 'service' ? item.service?.name : item.product?.name
+      if (!name) return
+      const key = `${item.item_type}:${name}`
+      if (!acc[key]) {
+        acc[key] = { name, type: item.item_type, count: 0, commission: 0 }
       }
+      acc[key].count += item.quantity
+      acc[key].commission += Number(item.commission) * item.quantity
     })
     return acc
-  }, {} as Record<string, { count: number; commission: number }>) || {}
+  }, {} as Record<string, { name: string; type: 'service' | 'product'; count: number; commission: number }>) || {}
 
   return (
     <div className="space-y-6">
@@ -99,7 +104,7 @@ export default function EarningsPage() {
       </Tabs>
 
       {/* Tarjetas resumen */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ganancias totales</CardTitle>
@@ -138,27 +143,42 @@ export default function EarningsPage() {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Productos vendidos</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalProducts}</div>
+            <p className="text-xs text-muted-foreground">
+              {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Desglose de servicios */}
-      {Object.keys(serviceBreakdown).length > 0 && (
+      {/* Desglose de ganancias */}
+      {Object.keys(itemBreakdown).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
               Desglose de ganancias
             </CardTitle>
-            <CardDescription>Comisión por tipo de servicio</CardDescription>
+            <CardDescription>Comisión por servicio y por producto vendido</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {Object.entries(serviceBreakdown)
+              {Object.entries(itemBreakdown)
                 .sort(([, a], [, b]) => b.commission - a.commission)
-                .map(([name, data]) => (
-                  <div key={name} className="flex items-center justify-between">
+                .map(([key, data]) => (
+                  <div key={key} className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">{name}</p>
-                      <p className="text-sm text-muted-foreground">{data.count} realizados</p>
+                      <p className="font-medium">{data.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {data.count} {data.type === 'service' ? 'realizados' : 'vendidos'}
+                      </p>
                     </div>
                     <p className="font-semibold">{formatCurrency(data.commission)}</p>
                   </div>
@@ -171,8 +191,8 @@ export default function EarningsPage() {
       {/* Historial detallado */}
       <Card>
         <CardHeader>
-          <CardTitle>Historial de servicios</CardTitle>
-          <CardDescription>Lista detallada de tus servicios</CardDescription>
+          <CardTitle>Historial de ventas</CardTitle>
+          <CardDescription>Lista detallada de tus servicios y productos vendidos</CardDescription>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[400px]">
@@ -212,10 +232,10 @@ export default function EarningsPage() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      {sale.items?.filter(i => i.item_type === 'service').map((item) => (
+                      {sale.items?.map((item) => (
                         <div key={item.id} className="flex justify-between text-sm">
                           <span className="text-muted-foreground">
-                            {item.quantity}x {item.service?.name}
+                            {item.quantity}x {item.item_type === 'service' ? item.service?.name : item.product?.name}
                           </span>
                           <span>{formatCurrency(Number(item.commission) * item.quantity)}</span>
                         </div>

@@ -55,6 +55,7 @@ export default function InventoryPage() {
   const [productDescription, setProductDescription] = useState('')
   const [productSalePrice, setProductSalePrice] = useState('')
   const [productCostPrice, setProductCostPrice] = useState('')
+  const [productCommission, setProductCommission] = useState('')
   const [productStock, setProductStock] = useState('')
   const [productCategoryId, setProductCategoryId] = useState<string>('')
   const [productImagen, setProductImagen] = useState('')
@@ -138,6 +139,7 @@ export default function InventoryPage() {
       description: productDescription.trim() || null,
       sale_price: parseFloat(productSalePrice),
       cost_price: parseFloat(productCostPrice),
+      commission: parseFloat(productCommission) || 0,
       stock: parseInt(productStock),
       category_id: productCategoryId || null,
       organization_id: profile.organization_id,
@@ -183,6 +185,7 @@ export default function InventoryPage() {
     setProductDescription('')
     setProductSalePrice('')
     setProductCostPrice('')
+    setProductCommission('')
     setProductStock('')
     setProductCategoryId('')
     setProductImagen('')
@@ -202,6 +205,7 @@ export default function InventoryPage() {
     setProductDescription(prod.description || '')
     setProductSalePrice(prod.sale_price.toString())
     setProductCostPrice(prod.cost_price.toString())
+    setProductCommission((prod.commission ?? 0).toString())
     setProductStock(prod.stock.toString())
     setProductCategoryId(prod.category_id || '')
     setProductImagen(prod.imagen || '')
@@ -342,13 +346,23 @@ export default function InventoryPage() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Ganancia</Label>
                       <Input
                         value={formatCurrency(profit)}
                         disabled
                         className="bg-muted"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Comisión barbero (S/)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={productCommission}
+                        onChange={(e) => setProductCommission(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -498,7 +512,7 @@ export default function InventoryPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-sm pt-4 border-t border-border/60">
+                <div className="grid grid-cols-4 gap-2 text-sm pt-4 border-t border-border/60">
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Precio</p>
                     <p className="font-semibold text-foreground text-sm mt-0.5">{formatCurrency(product.sale_price)}</p>
@@ -506,6 +520,10 @@ export default function InventoryPage() {
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ganancia</p>
                     <p className="font-semibold text-green-600 dark:text-green-500 text-sm mt-0.5">{formatCurrency(product.sale_price - product.cost_price)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Comisión</p>
+                    <p className="font-semibold text-blue-600 dark:text-blue-500 text-sm mt-0.5">{formatCurrency(product.commission || 0)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Stock</p>

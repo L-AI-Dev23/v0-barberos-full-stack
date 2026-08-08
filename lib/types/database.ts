@@ -127,6 +127,7 @@ export interface Product {
   description: string | null
   sale_price: number
   cost_price: number
+  commission: number
   stock: number
   min_stock: number | null
   category_id: string | null

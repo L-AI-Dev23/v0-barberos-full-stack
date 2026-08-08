@@ -416,7 +416,7 @@ export default function POSPage() {
             ? overrideCommission
             : type === "service"
               ? (item as Service).commission
-              : 0,
+              : (item as Product).commission || 0,
         quantity: 1,
         selectedOption: type === "service" && (item as Service).opciones && (item as Service).opciones!.length > 0
           ? (item as Service).opciones![0]
