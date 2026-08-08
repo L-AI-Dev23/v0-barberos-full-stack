@@ -64,6 +64,7 @@ export async function triggerAppointmentEmployeePush(appointmentId: string, orga
 
   const time = new Date(appointment.appointment_time)
   const timeLabel = time.toLocaleString('es-PE', {
+    timeZone: 'America/Lima',
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
