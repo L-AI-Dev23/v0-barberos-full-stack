@@ -32,6 +32,16 @@ import {
 import { Plus, MoreVertical, Pencil, Trash2, FolderPlus, Settings, AlertTriangle, Sparkles } from 'lucide-react'
 import type { Product, ProductCategory } from '@/lib/types/database'
 
+function toDirectImageUrl(url: string): string {
+  if (!url) return url
+  // Convierte enlaces de Google Drive (view/share) a un formato que sí carga en <img>
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/) || url.match(/[?&]id=([^&]+)/)
+  if (driveMatch && driveMatch[1] && url.includes('drive.google.com')) {
+    return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`
+  }
+  return url
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
     style: 'currency',
@@ -143,7 +153,7 @@ export default function InventoryPage() {
       stock: parseInt(productStock),
       category_id: productCategoryId || null,
       organization_id: profile.organization_id,
-      imagen: productImagen.trim() || null,
+      imagen: toDirectImageUrl(productImagen.trim()) || null,
       beneficios: productBeneficios.trim() || null,
     }
 
@@ -456,7 +466,7 @@ export default function InventoryPage() {
               <div className="h-60 w-full relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/40">
                 {product.imagen ? (
                   <img
-                    src={product.imagen}
+                    src={toDirectImageUrl(product.imagen)}
                     alt={product.name}
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                   />
