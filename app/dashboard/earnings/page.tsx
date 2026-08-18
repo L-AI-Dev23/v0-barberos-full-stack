@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/context/auth-context'
@@ -22,7 +22,9 @@ export default function EarningsPage() {
   const supabase = createClient()
   const [filter, setFilter] = useState<DateFilterValue>({ period: 'today' })
 
-  const range = resolveDateRange(filter)
+  // useMemo evita recalcular new Date() (y por tanto cambiar la key de SWR)
+  // en cada render; solo se recalcula cuando cambia el filtro.
+  const range = useMemo(() => resolveDateRange(filter), [filter])
   const filterKey = `${filter.period}-${range.start}-${range.end}`
 
   const { data: sales } = useSWR<(Sale & { items: SaleItem[] })[]>(
