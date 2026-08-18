@@ -23,9 +23,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { UserPlus, Copy, Check, Calendar, Trash2, Sparkles } from 'lucide-react'
+import { UserPlus, Copy, Check, Calendar, Trash2, Sparkles, Wallet, Heart, Scissors, Package } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Profile, InvitationCode, ModulePermissions } from '@/lib/types/database'
+import type { Profile, InvitationCode, ModulePermissions, Sale, SaleItem } from '@/lib/types/database'
+import { DateRangeFilter, resolveDateRange, describeDateFilter, type DateFilterValue } from '@/components/dashboard/date-range-filter'
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+  }).format(amount)
+}
 
 const WORK_DAYS = [
   { key: 'monday', label: 'L' },
@@ -62,6 +70,35 @@ export default function CollaboratorsPage() {
   const [saving, setSaving] = useState(false)
   const [pendingEmployeeType, setPendingEmployeeType] = useState<'barbero' | 'equipo'>('barbero')
   const [savingType, setSavingType] = useState(false)
+  const [earningsFilter, setEarningsFilter] = useState<DateFilterValue>({ period: 'today' })
+
+  const earningsRange = resolveDateRange(earningsFilter)
+  const earningsFilterKey = `${earningsFilter.period}-${earningsRange.start}-${earningsRange.end}`
+
+  const { data: employeeSales } = useSWR<(Sale & { items: SaleItem[] })[]>(
+    selectedEmployee?.id ? `collaborator-earnings-${selectedEmployee.id}-${earningsFilterKey}` : null,
+    async () => {
+      const { data } = await supabase
+        .from('sales')
+        .select('*, items:sale_items(*, service:services(*), product:products(*))')
+        .eq('employee_id', selectedEmployee!.id)
+        .gte('created_at', earningsRange.start)
+        .lte('created_at', earningsRange.end)
+        .order('created_at', { ascending: false })
+      return data || []
+    }
+  )
+
+  const employeeTotalEarnings = employeeSales?.reduce((sum, sale) => sum + Number(sale.total_commission), 0) || 0
+  const employeeTotalTips = employeeSales?.reduce((sum, sale) => sum + Number(sale.tip_amount || 0), 0) || 0
+  const employeeTotalServices = employeeSales?.reduce((sum, sale) => {
+    const serviceItems = sale.items?.filter(i => i.item_type === 'service') || []
+    return sum + serviceItems.reduce((s, i) => s + i.quantity, 0)
+  }, 0) || 0
+  const employeeTotalProducts = employeeSales?.reduce((sum, sale) => {
+    const productItems = sale.items?.filter(i => i.item_type === 'product') || []
+    return sum + productItems.reduce((s, i) => s + i.quantity, 0)
+  }, 0) || 0
 
   const { data: employees, mutate: mutateEmployees } = useSWR<Profile[]>(
     profile?.organization_id ? `employees-${profile.organization_id}` : null,
@@ -134,6 +171,7 @@ export default function CollaboratorsPage() {
   function openEmployeeModal(emp: Profile) {
     setSelectedEmployee(emp)
     setPendingEmployeeType(emp.employee_type === 'equipo' ? 'equipo' : 'barbero')
+    setEarningsFilter({ period: 'today' })
     setEmployeeModalOpen(true)
   }
 
@@ -391,7 +429,7 @@ export default function CollaboratorsPage() {
 
       {/* Employee Detail Dialog Modal */}
       <Dialog open={employeeModalOpen} onOpenChange={setEmployeeModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedEmployee?.full_name}</DialogTitle>
           </DialogHeader>
@@ -399,6 +437,44 @@ export default function CollaboratorsPage() {
             <div className="space-y-6 py-4">
               <div>
                 <p className="text-sm text-muted-foreground">{selectedEmployee.email}</p>
+              </div>
+
+              <div className="space-y-3 pb-4 border-b">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-base">Ganancias</Label>
+                </div>
+
+                <DateRangeFilter value={earningsFilter} onChange={setEarningsFilter} />
+
+                <p className="text-xs text-muted-foreground">{describeDateFilter(earningsFilter)}</p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Wallet className="h-3.5 w-3.5" /> Ganancias
+                    </div>
+                    <p className="text-lg font-bold">{formatCurrency(employeeTotalEarnings)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Heart className="h-3.5 w-3.5" /> Propinas
+                    </div>
+                    <p className="text-lg font-bold">{formatCurrency(employeeTotalTips)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Scissors className="h-3.5 w-3.5" /> Servicios
+                    </div>
+                    <p className="text-lg font-bold">{employeeTotalServices}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Package className="h-3.5 w-3.5" /> Productos
+                    </div>
+                    <p className="text-lg font-bold">{employeeTotalProducts}</p>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

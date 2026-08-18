@@ -5,10 +5,10 @@ import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/context/auth-context'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Wallet, Scissors, TrendingUp, Heart, Package } from 'lucide-react'
 import type { Sale, SaleItem } from '@/lib/types/database'
+import { DateRangeFilter, resolveDateRange, describeDateFilter, type DateFilterValue } from '@/components/dashboard/date-range-filter'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('es-PE', {
@@ -17,36 +17,17 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-type Period = 'today' | 'week' | 'month'
-
 export default function EarningsPage() {
   const { profile } = useAuth()
   const supabase = createClient()
-  const [period, setPeriod] = useState<Period>('today')
+  const [filter, setFilter] = useState<DateFilterValue>({ period: 'today' })
 
-  function getDateRange(p: Period) {
-    const now = new Date()
-    const start = new Date()
-    
-    switch (p) {
-      case 'today':
-        start.setHours(0, 0, 0, 0)
-        break
-      case 'week':
-        start.setDate(now.getDate() - 7)
-        break
-      case 'month':
-        start.setMonth(now.getMonth() - 1)
-        break
-    }
-    
-    return { start: start.toISOString(), end: now.toISOString() }
-  }
+  const range = resolveDateRange(filter)
+  const filterKey = `${filter.period}-${range.start}-${range.end}`
 
   const { data: sales } = useSWR<(Sale & { items: SaleItem[] })[]>(
-    profile?.id ? `earnings-${period}` : null,
+    profile?.id ? `earnings-${filterKey}` : null,
     async () => {
-      const range = getDateRange(period)
       const { data } = await supabase
         .from('sales')
         .select('*, items:sale_items(*, service:services(*), product:products(*))')
@@ -95,13 +76,7 @@ export default function EarningsPage() {
       </div>
 
       {/* Selector de período */}
-      <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
-        <TabsList>
-          <TabsTrigger value="today">Hoy</TabsTrigger>
-          <TabsTrigger value="week">Esta semana</TabsTrigger>
-          <TabsTrigger value="month">Este mes</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <DateRangeFilter value={filter} onChange={setFilter} />
 
       {/* Tarjetas resumen */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -113,7 +88,7 @@ export default function EarningsPage() {
           <CardContent>
             <div className="text-3xl font-bold">{formatCurrency(totalEarnings)}</div>
             <p className="text-xs text-muted-foreground">
-              {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
+              {describeDateFilter(filter)}
             </p>
           </CardContent>
         </Card>
@@ -126,7 +101,7 @@ export default function EarningsPage() {
           <CardContent>
             <div className="text-3xl font-bold">{formatCurrency(totalTips)}</div>
             <p className="text-xs text-muted-foreground">
-              {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
+              {describeDateFilter(filter)}
             </p>
           </CardContent>
         </Card>
@@ -139,7 +114,7 @@ export default function EarningsPage() {
           <CardContent>
             <div className="text-3xl font-bold">{totalServices}</div>
             <p className="text-xs text-muted-foreground">
-              {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
+              {describeDateFilter(filter)}
             </p>
           </CardContent>
         </Card>
@@ -152,7 +127,7 @@ export default function EarningsPage() {
           <CardContent>
             <div className="text-3xl font-bold">{totalProducts}</div>
             <p className="text-xs text-muted-foreground">
-              {period === 'today' ? 'Hoy' : period === 'week' ? 'Últimos 7 días' : 'Últimos 30 días'}
+              {describeDateFilter(filter)}
             </p>
           </CardContent>
         </Card>
