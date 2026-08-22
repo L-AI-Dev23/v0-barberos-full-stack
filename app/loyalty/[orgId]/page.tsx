@@ -687,7 +687,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
           </div>
 
           {(() => {
-            const bookableServices = services.filter((s) => s.mode !== 'ejemplo')
+            const bookableServices = services.filter((s) => s.mode !== 'ejemplo' && s.mode !== 'servicio_interno')
             return bookableServices.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {bookableServices.map((service) => (

@@ -111,7 +111,7 @@ export interface Service {
   opciones?: string[] | null
   variable_price?: boolean
   commission_percent?: number | null
-  mode?: 'servicio' | 'ejemplo'
+  mode?: 'servicio' | 'ejemplo' | 'servicio_interno'
 }
 
 export interface ProductCategory {
