@@ -234,6 +234,8 @@ export default function POSPage() {
 
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
+  const [historyDateFilter, setHistoryDateFilter] = useState("");
+  const [historyEmployeeFilter, setHistoryEmployeeFilter] = useState("all");
 
   // Recent completed sales, for the "Historial" panel where a mistaken
   // sale can be deleted (this immediately reduces daily revenue, payment
@@ -243,17 +245,43 @@ export default function POSPage() {
     data: salesHistory,
     mutate: mutateSalesHistory,
   } = useSWR(
-    historyDialogOpen && profile?.organization_id ? "pos-sales-history" : null,
+    historyDialogOpen && profile?.organization_id
+      ? ["pos-sales-history", historyDateFilter, historyEmployeeFilter]
+      : null,
     async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("sales")
-        .select("*, employee:profiles(*), client:loyalty_clients(*)")
+        .select(
+          "*, employee:profiles(*), client:loyalty_clients(*), sale_items(*, service:services(name), product:products(name))",
+        )
         .eq("organization_id", profile!.organization_id)
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .order("created_at", { ascending: false });
+
+      if (historyDateFilter) {
+        const start = new Date(`${historyDateFilter}T00:00:00`).toISOString();
+        const end = new Date(`${historyDateFilter}T23:59:59.999`).toISOString();
+        query = query.gte("created_at", start).lte("created_at", end);
+      }
+
+      if (historyEmployeeFilter !== "all") {
+        query = query.eq("employee_id", historyEmployeeFilter);
+      }
+
+      const { data } = await query.limit(historyDateFilter || historyEmployeeFilter !== "all" ? 200 : 50);
       return data || [];
     },
   );
+
+  function saleItemsLabel(sale: any) {
+    const items = sale.sale_items;
+    if (!items || items.length === 0) return null;
+    return items
+      .map((it: any) => {
+        const name = it.service?.name || it.product?.name || "Item";
+        return it.quantity > 1 ? `${name} x${it.quantity}` : name;
+      })
+      .join(", ");
+  }
 
   async function handleDeleteSale(saleId: string) {
     if (!confirm("¿Eliminar esta venta? Esta acción no se puede deshacer.")) return;
@@ -509,68 +537,92 @@ export default function POSPage() {
 
       if (saleError) throw saleError;
 
-      // Create sale items
-      const saleItems = cart.map((item) => ({
-        sale_id: sale.id,
-        item_type: item.type,
-        service_id: item.type === "service" ? item.id : null,
-        product_id: item.type === "product" ? item.id : null,
-        quantity: item.quantity,
-        unit_price: item.price,
-        commission: item.commission,
-        opcion_seleccionada: item.type === "service" ? item.selectedOption : null,
-      }));
+      // A partir de aquí la venta YA quedó registrada (fila creada en
+      // "sales"). Todo lo que sigue son pasos secundarios (items, stock,
+      // fidelidad); si alguno falla, no debe hacer creer al usuario que la
+      // venta no se registró, así que cada uno se maneja por separado y solo
+      // se loguea en consola, sin relanzar el error hacia el catch general.
 
-      await supabase.from("sale_items").insert(saleItems);
+      // Create sale items
+      try {
+        const saleItems = cart.map((item) => ({
+          sale_id: sale.id,
+          item_type: item.type,
+          service_id: item.type === "service" ? item.id : null,
+          product_id: item.type === "product" ? item.id : null,
+          quantity: item.quantity,
+          unit_price: item.price,
+          commission: item.commission,
+          opcion_seleccionada:
+            item.type === "service" ? item.selectedOption : null,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("sale_items")
+          .insert(saleItems);
+        if (itemsError) throw itemsError;
+      } catch (itemsError) {
+        console.error("Error saving sale items:", itemsError);
+      }
 
       // Update product stock
       for (const item of cart) {
         if (item.type === "product") {
-          await supabase
-            .rpc("decrement_stock", {
-              product_id: item.id,
-              amount: item.quantity,
-            })
-            .catch(() => {
-              // If RPC doesn't exist, do it manually
-              supabase
+          try {
+            const { error: rpcError } = await supabase.rpc(
+              "decrement_stock",
+              {
+                product_id: item.id,
+                amount: item.quantity,
+              },
+            );
+            if (rpcError) {
+              // If RPC doesn't exist (or fails), do it manually
+              await supabase
                 .from("products")
                 .update({ stock: (item.product?.stock || 0) - item.quantity })
                 .eq("id", item.id);
-            });
+            }
+          } catch (stockError) {
+            console.error("Error updating stock:", stockError);
+          }
         }
       }
 
       // Update loyalty stamps if client selected
       if (selectedClient) {
-        const serviceCount = cart
-          .filter((item) => item.type === "service")
-          .reduce((sum, item) => sum + item.quantity, 0);
+        try {
+          const serviceCount = cart
+            .filter((item) => item.type === "service")
+            .reduce((sum, item) => sum + item.quantity, 0);
 
-        if (serviceCount > 0 || applyCoupon) {
-          const client = clients?.find((c) => c.id === selectedClient);
-          if (client) {
-            const totalStamps = client.stamps + serviceCount;
-            let additionalCoupons = 0;
-            let finalStamps = totalStamps;
+          if (serviceCount > 0 || applyCoupon) {
+            const client = clients?.find((c) => c.id === selectedClient);
+            if (client) {
+              const totalStamps = client.stamps + serviceCount;
+              let additionalCoupons = 0;
+              let finalStamps = totalStamps;
 
-            // If stamps >= 5, create coupon and reset
-            if (totalStamps >= 5) {
-              additionalCoupons = Math.floor(totalStamps / 5);
-              finalStamps = totalStamps % 5;
+              // If stamps >= 5, create coupon and reset
+              if (totalStamps >= 5) {
+                additionalCoupons = Math.floor(totalStamps / 5);
+                finalStamps = totalStamps % 5;
+              }
+
+              let finalCoupons = client.coupons + additionalCoupons;
+
+              if (applyCoupon) {
+                finalCoupons -= 1;
+              }
+
+              await supabase
+                .from("loyalty_clients")
+                .update({ stamps: finalStamps, coupons: finalCoupons })
+                .eq("id", selectedClient);
             }
-
-            let finalCoupons = client.coupons + additionalCoupons;
-
-            if (applyCoupon) {
-              finalCoupons -= 1;
-            }
-
-            await supabase
-              .from("loyalty_clients")
-              .update({ stamps: finalStamps, coupons: finalCoupons })
-              .eq("id", selectedClient);
           }
+        } catch (loyaltyError) {
+          console.error("Error updating loyalty:", loyaltyError);
         }
       }
 
@@ -1206,6 +1258,47 @@ export default function POSPage() {
             Últimas ventas completadas. Eliminar una venta hecha por error reduce
             automáticamente lo registrado en caja e ingresos.
           </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex-1 space-y-1">
+              <Label className="text-xs">Fecha</Label>
+              <Input
+                type="date"
+                value={historyDateFilter}
+                onChange={(e) => setHistoryDateFilter(e.target.value)}
+              />
+            </div>
+            <div className="flex-1 space-y-1">
+              <Label className="text-xs">Barbero</Label>
+              <Select
+                value={historyEmployeeFilter}
+                onValueChange={setHistoryEmployeeFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {employees?.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {(historyDateFilter || historyEmployeeFilter !== "all") && (
+              <Button
+                variant="ghost"
+                className="sm:self-end"
+                onClick={() => {
+                  setHistoryDateFilter("");
+                  setHistoryEmployeeFilter("all");
+                }}
+              >
+                Limpiar
+              </Button>
+            )}
+          </div>
           {!salesHistory ? (
             <p className="text-center text-muted-foreground py-8">Cargando...</p>
           ) : salesHistory.length === 0 ? (
@@ -1236,6 +1329,11 @@ export default function POSPage() {
                       · {sale.employee?.full_name || "Empleado"}
                       {sale.client?.name ? ` · ${sale.client.name}` : ""}
                     </p>
+                    {saleItemsLabel(sale) && (
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {saleItemsLabel(sale)}
+                      </p>
+                    )}
                   </div>
                   <Button
                     variant="ghost"
