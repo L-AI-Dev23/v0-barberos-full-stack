@@ -13,9 +13,32 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export type PushSetupResult =
   | { status: 'unsupported' }
+  | { status: 'ios-needs-install' }
   | { status: 'denied' }
   | { status: 'error'; message: string }
   | { status: 'subscribed' }
+
+/** Detecta iPhone/iPad, incluyendo iPadOS 13+ que se identifica como "Mac". */
+export function isIOSDevice(): boolean {
+  if (typeof window === 'undefined') return false
+  const ua = window.navigator.userAgent
+  const isAppleTouch = /iPhone|iPad|iPod/.test(ua)
+  const isIpadDesktopMode = ua.includes('Macintosh') && 'ontouchend' in document
+  return isAppleTouch || isIpadDesktopMode
+}
+
+/**
+ * En iOS, Push solo está disponible cuando el sitio se abrió como PWA
+ * instalada (Añadir a pantalla de inicio), sin importar el navegador
+ * (Safari, Chrome y Firefox en iOS comparten el mismo motor WebKit).
+ * Este helper detecta si estamos corriendo en modo standalone.
+ */
+export function isRunningAsInstalledApp(): boolean {
+  if (typeof window === 'undefined') return false
+  const standaloneMedia = window.matchMedia?.('(display-mode: standalone)').matches
+  const iosStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone === true
+  return !!standaloneMedia || !!iosStandalone
+}
 
 /**
  * Pide permiso de notificaciones a ESTE navegador/dispositivo, registra el
@@ -31,6 +54,11 @@ export async function setupEmployeePushNotifications(
   if (typeof window === 'undefined') return { status: 'unsupported' }
 
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    // En iOS, si no está instalado como PWA, faltan estas APIs incluso en
+    // Chrome/Safari/Firefox — no es un problema real del navegador.
+    if (isIOSDevice() && !isRunningAsInstalledApp()) {
+      return { status: 'ios-needs-install' }
+    }
     return { status: 'unsupported' }
   }
 
@@ -40,8 +68,39 @@ export async function setupEmployeePushNotifications(
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js')
-    await navigator.serviceWorker.ready
+    // Si quedó un registro de un intento anterior (por ejemplo, de antes de
+    // instalar la app en iOS) puede quedar en un estado roto que hace fallar
+    // el registro nuevo. Lo limpiamos primero para partir de cero.
+    const existingRegistration = await navigator.serviceWorker.getRegistration('/sw.js')
+    if (existingRegistration && !existingRegistration.active) {
+      await existingRegistration.unregister().catch(() => {})
+    }
+
+    let registration: ServiceWorkerRegistration
+    try {
+      registration = await navigator.serviceWorker.register('/sw.js')
+    } catch (registerError) {
+      return {
+        status: 'error',
+        message:
+          'No se pudo registrar el service worker. Cierra la app desde el multitasking, vuelve a abrirla y prueba de nuevo.',
+      }
+    }
+
+    // navigator.serviceWorker.ready puede quedarse colgado indefinidamente
+    // en algunos casos de iOS; le ponemos un límite de tiempo.
+    const readyOrTimeout = Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+    ])
+    try {
+      await readyOrTimeout
+    } catch {
+      return {
+        status: 'error',
+        message: 'El service worker no respondió a tiempo. Cierra la app por completo y vuelve a abrirla.',
+      }
+    }
 
     const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
     if (!vapidPublicKey) {
@@ -50,10 +109,18 @@ export async function setupEmployeePushNotifications(
 
     let subscription = await registration.pushManager.getSubscription()
     if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-      })
+      try {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        })
+      } catch (subscribeError) {
+        return {
+          status: 'error',
+          message:
+            'No se pudo crear la suscripción push. En iPhone, confirma que abriste la app desde el ícono de la pantalla de inicio (no desde una pestaña normal).',
+        }
+      }
     }
 
     const res = await fetch('/api/push/subscribe', {

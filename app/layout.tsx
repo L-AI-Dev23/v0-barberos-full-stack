@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   title: 'BarberOS - Barbershop Management System',
   description: 'Complete barbershop management system with POS, loyalty programs, and employee management',
   generator: 'v0.app',
+  manifest: '/manifest.json',
   icons: {
     icon: [
       {
@@ -31,6 +32,15 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'BarberOS',
+  },
+}
+
+export const viewport = {
+  themeColor: '#ffffff',
 }
 
 export default function RootLayout({
