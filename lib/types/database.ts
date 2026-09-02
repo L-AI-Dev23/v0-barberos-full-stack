@@ -51,6 +51,7 @@ export interface Profile {
   work_schedule: WorkSchedule
   avatar_url?: string | null
   employee_type?: 'barbero' | 'equipo'
+  employee_status?: 'nuevo' | 'estandar'
   is_active?: boolean
   created_at: string
   updated_at: string
@@ -101,6 +102,7 @@ export interface Service {
   description: string | null
   cost: number
   commission: number
+  commission_nuevo?: number | null
   category_id: string | null
   organization_id: string
   created_at: string
@@ -111,6 +113,7 @@ export interface Service {
   opciones?: string[] | null
   variable_price?: boolean
   commission_percent?: number | null
+  commission_percent_nuevo?: number | null
   mode?: 'servicio' | 'ejemplo' | 'servicio_interno'
 }
 

@@ -54,8 +54,10 @@ export default function ServicesPage() {
   const [serviceDescription, setServiceDescription] = useState('')
   const [serviceCost, setServiceCost] = useState('')
   const [serviceCommission, setServiceCommission] = useState('')
+  const [serviceCommissionNuevo, setServiceCommissionNuevo] = useState('')
   const [servicePriceType, setServicePriceType] = useState<'fijo' | 'variable'>('fijo')
   const [serviceCommissionPercent, setServiceCommissionPercent] = useState('')
+  const [serviceCommissionPercentNuevo, setServiceCommissionPercentNuevo] = useState('')
   const [serviceCategoryId, setServiceCategoryId] = useState<string>('')
   const [serviceIncluye, setServiceIncluye] = useState('')
   const [serviceImagen, setServiceImagen] = useState('')
@@ -133,8 +135,16 @@ export default function ServicesPage() {
       description: serviceDescription.trim() || null,
       cost: servicePriceType === 'fijo' ? parseFloat(serviceCost) : 0,
       commission: servicePriceType === 'fijo' ? parseFloat(serviceCommission) : 0,
+      commission_nuevo:
+        servicePriceType === 'fijo' && serviceCommissionNuevo.trim() !== ''
+          ? parseFloat(serviceCommissionNuevo)
+          : null,
       variable_price: servicePriceType === 'variable',
       commission_percent: servicePriceType === 'variable' ? parseFloat(serviceCommissionPercent) : null,
+      commission_percent_nuevo:
+        servicePriceType === 'variable' && serviceCommissionPercentNuevo.trim() !== ''
+          ? parseFloat(serviceCommissionPercentNuevo)
+          : null,
       category_id: serviceCategoryId || null,
       organization_id: profile.organization_id,
       incluye: serviceIncluye.trim() || null,
@@ -174,8 +184,10 @@ export default function ServicesPage() {
     setServiceDescription('')
     setServiceCost('')
     setServiceCommission('')
+    setServiceCommissionNuevo('')
     setServicePriceType('fijo')
     setServiceCommissionPercent('')
+    setServiceCommissionPercentNuevo('')
     setServiceCategoryId('')
     setServiceIncluye('')
     setServiceImagen('')
@@ -196,8 +208,10 @@ export default function ServicesPage() {
     setServiceDescription(svc.description || '')
     setServiceCost(svc.cost.toString())
     setServiceCommission(svc.commission.toString())
+    setServiceCommissionNuevo(svc.commission_nuevo != null ? svc.commission_nuevo.toString() : '')
     setServicePriceType(svc.variable_price ? 'variable' : 'fijo')
     setServiceCommissionPercent(svc.commission_percent != null ? svc.commission_percent.toString() : '')
+    setServiceCommissionPercentNuevo(svc.commission_percent_nuevo != null ? svc.commission_percent_nuevo.toString() : '')
     setServiceCategoryId(svc.category_id || '')
     setServiceIncluye(svc.incluye || '')
     setServiceImagen(svc.imagen || '')
@@ -280,52 +294,86 @@ export default function ServicesPage() {
                     />
                   </div>
                   {servicePriceType === 'fijo' ? (
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Precio (S/) *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={serviceCost}
+                            onChange={(e) => setServiceCost(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Comisión (S/) *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={serviceCommission}
+                            onChange={(e) => setServiceCommission(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Ganancia</Label>
+                          <Input
+                            value={formatCurrency(profit)}
+                            disabled
+                            className="bg-muted"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label>Precio (S/) *</Label>
+                        <Label>Comisión nuevo (S/)</Label>
                         <Input
                           type="number"
                           step="0.01"
                           placeholder="0.00"
-                          value={serviceCost}
-                          onChange={(e) => setServiceCost(e.target.value)}
+                          value={serviceCommissionNuevo}
+                          onChange={(e) => setServiceCommissionNuevo(e.target.value)}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Comisión (S/) *</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={serviceCommission}
-                          onChange={(e) => setServiceCommission(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Ganancia</Label>
-                        <Input
-                          value={formatCurrency(profit)}
-                          disabled
-                          className="bg-muted"
-                        />
+                        <p className="text-xs text-muted-foreground">
+                          Comisión que gana un barbero marcado como "Nuevo" (en fase de prueba) por este
+                          servicio. Si se deja vacío, se usa la misma comisión estándar.
+                        </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <Label>Comisión (%) *</Label>
-                      <Input
-                        type="number"
-                        step="1"
-                        min="0"
-                        max="100"
-                        placeholder="ej., 40"
-                        value={serviceCommissionPercent}
-                        onChange={(e) => setServiceCommissionPercent(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        El precio se ingresa al momento de completar la venta en el P.O.S. La comisión
-                        se calculará como este porcentaje sobre el precio ingresado.
-                      </p>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Comisión (%) *</Label>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          placeholder="ej., 40"
+                          value={serviceCommissionPercent}
+                          onChange={(e) => setServiceCommissionPercent(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          El precio se ingresa al momento de completar la venta en el P.O.S. La comisión
+                          se calculará como este porcentaje sobre el precio ingresado.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Comisión nuevo (%)</Label>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          placeholder="ej., 30"
+                          value={serviceCommissionPercentNuevo}
+                          onChange={(e) => setServiceCommissionPercentNuevo(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Porcentaje de comisión para barberos marcados como "Nuevo". Si se deja vacío, se
+                          usa el mismo porcentaje estándar.
+                        </p>
+                      </div>
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-4">
@@ -543,6 +591,14 @@ export default function ServicesPage() {
                       : formatCurrency(service.cost - service.commission)}
                   </p>
                 </div>
+              </div>
+              <div className="pt-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Comisión nuevo</p>
+                <p className="font-semibold text-foreground text-[15px] mt-0.5">
+                  {service.variable_price
+                    ? `${service.commission_percent_nuevo ?? service.commission_percent ?? 0}%`
+                    : formatCurrency(service.commission_nuevo ?? service.commission)}
+                </p>
               </div>
             </div>
           </Card>

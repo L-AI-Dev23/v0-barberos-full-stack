@@ -413,6 +413,25 @@ export default function POSPage() {
     }
   }
 
+  // Whether the currently selected employee is a "nuevo" (trial) barber.
+  // Services can define a separate, usually lower, commission for barbers
+  // in this status via commission_nuevo / commission_percent_nuevo.
+  const selectedEmployeeIsNew = useMemo(() => {
+    const emp = employees?.find((e) => e.id === selectedEmployee);
+    return emp?.employee_status === "nuevo";
+  }, [employees, selectedEmployee]);
+
+  function fixedCommissionFor(service: Service, isNew: boolean) {
+    if (isNew && service.commission_nuevo != null) return service.commission_nuevo;
+    return service.commission;
+  }
+
+  function variableCommissionPercentFor(service: Service, isNew: boolean) {
+    const standardPct = service.commission_percent ?? 40;
+    if (isNew && service.commission_percent_nuevo != null) return service.commission_percent_nuevo;
+    return standardPct;
+  }
+
   function addToCart(
     item: Service | Product,
     type: "service" | "product",
@@ -443,7 +462,7 @@ export default function POSPage() {
           overrideCommission !== undefined
             ? overrideCommission
             : type === "service"
-              ? (item as Service).commission
+              ? fixedCommissionFor(item as Service, selectedEmployeeIsNew)
               : (item as Product).commission || 0,
         quantity: 1,
         selectedOption: type === "service" && (item as Service).opciones && (item as Service).opciones!.length > 0
@@ -456,6 +475,29 @@ export default function POSPage() {
       setCart([...cart, cartItem]);
     }
   }
+
+  // Recalculate the commission of every service already in the cart whenever
+  // the selected employee (and thus their "nuevo"/"estandar" status) changes,
+  // so switching the barber before completing the sale updates commissions.
+  useEffect(() => {
+    setCart((prevCart) => {
+      let changed = false;
+      const newCart = prevCart.map((cartItem) => {
+        if (cartItem.type !== "service" || !cartItem.service) return cartItem;
+        // Los servicios de precio variable ya tienen su comisión fijada al
+        // momento de ingresarla en el diálogo, no se recalculan aquí.
+        if (cartItem.service.variable_price) return cartItem;
+        const newCommission = fixedCommissionFor(cartItem.service, selectedEmployeeIsNew);
+        if (newCommission !== cartItem.commission) {
+          changed = true;
+          return { ...cartItem, commission: newCommission };
+        }
+        return cartItem;
+      });
+      return changed ? newCart : prevCart;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmployeeIsNew]);
 
   function handleItemClick(item: Service | Product, type: "service" | "product") {
     if (type === "service" && (item as Service).variable_price) {
@@ -474,7 +516,7 @@ export default function POSPage() {
       alert("Ingresa un precio válido.");
       return;
     }
-    const pct = pendingVariableService.commission_percent ?? 40;
+    const pct = variableCommissionPercentFor(pendingVariableService, selectedEmployeeIsNew);
     const commission = Number(((price * pct) / 100).toFixed(2));
     addToCart(pendingVariableService, "service", price, commission);
     setVariablePriceDialogOpen(false);
@@ -1231,8 +1273,11 @@ export default function POSPage() {
               />
               <p className="text-xs text-muted-foreground">
                 La comisión será el{" "}
-                {pendingVariableService?.commission_percent ?? 40}% de este
-                precio.
+                {pendingVariableService
+                  ? variableCommissionPercentFor(pendingVariableService, selectedEmployeeIsNew)
+                  : 40}
+                % de este precio
+                {selectedEmployeeIsNew ? " (tarifa de barbero nuevo)" : ""}.
               </p>
             </div>
           </div>

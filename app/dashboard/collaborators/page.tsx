@@ -69,6 +69,7 @@ export default function CollaboratorsPage() {
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [pendingEmployeeType, setPendingEmployeeType] = useState<'barbero' | 'equipo'>('barbero')
+  const [pendingEmployeeStatus, setPendingEmployeeStatus] = useState<'nuevo' | 'estandar'>('estandar')
   const [savingType, setSavingType] = useState(false)
   const [earningsFilter, setEarningsFilter] = useState<DateFilterValue>({ period: 'today' })
 
@@ -173,6 +174,7 @@ export default function CollaboratorsPage() {
   function openEmployeeModal(emp: Profile) {
     setSelectedEmployee(emp)
     setPendingEmployeeType(emp.employee_type === 'equipo' ? 'equipo' : 'barbero')
+    setPendingEmployeeStatus(emp.employee_status === 'nuevo' ? 'nuevo' : 'estandar')
     setEarningsFilter({ period: 'today' })
     setEmployeeModalOpen(true)
   }
@@ -219,7 +221,7 @@ export default function CollaboratorsPage() {
     setSavingType(true)
     const { data, error } = await supabase
       .from('profiles')
-      .update({ employee_type: pendingEmployeeType })
+      .update({ employee_type: pendingEmployeeType, employee_status: pendingEmployeeStatus })
       .eq('id', selectedEmployee.id)
       .select()
 
@@ -238,7 +240,7 @@ export default function CollaboratorsPage() {
       return
     }
 
-    setSelectedEmployee(prev => prev ? { ...prev, employee_type: pendingEmployeeType } : null)
+    setSelectedEmployee(prev => prev ? { ...prev, employee_type: pendingEmployeeType, employee_status: pendingEmployeeStatus } : null)
     mutateEmployees()
   }
 
@@ -480,26 +482,50 @@ export default function CollaboratorsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-base">Tipo</Label>
-                <Select
-                  value={pendingEmployeeType}
-                  onValueChange={(v) => setPendingEmployeeType(v as 'barbero' | 'equipo')}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="barbero">Barbero</SelectItem>
-                    <SelectItem value="equipo">Equipo</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-base">Tipo</Label>
+                    <Select
+                      value={pendingEmployeeType}
+                      onValueChange={(v) => setPendingEmployeeType(v as 'barbero' | 'equipo')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="barbero">Barbero</SelectItem>
+                        <SelectItem value="equipo">Equipo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-base">Estado</Label>
+                    <Select
+                      value={pendingEmployeeStatus}
+                      onValueChange={(v) => setPendingEmployeeStatus(v as 'nuevo' | 'estandar')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nuevo">Nuevo</SelectItem>
+                        <SelectItem value="estandar">Estándar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Solo los colaboradores marcados como "Barbero" aparecen en la lista para elegir barbero al reservar una cita.
+                  El estado "Nuevo" aplica la "Comisión nuevo" de cada servicio (barberos en fase de prueba); "Estándar" aplica la comisión normal.
                 </p>
                 <Button
                   size="sm"
                   className="w-full"
-                  disabled={savingType || pendingEmployeeType === (selectedEmployee.employee_type === 'equipo' ? 'equipo' : 'barbero')}
+                  disabled={
+                    savingType ||
+                    (pendingEmployeeType === (selectedEmployee.employee_type === 'equipo' ? 'equipo' : 'barbero') &&
+                      pendingEmployeeStatus === (selectedEmployee.employee_status === 'nuevo' ? 'nuevo' : 'estandar'))
+                  }
                   onClick={saveEmployeeType}
                 >
                   {savingType ? 'Guardando...' : 'Guardar tipo'}
