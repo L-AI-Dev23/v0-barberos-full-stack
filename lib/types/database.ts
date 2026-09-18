@@ -11,13 +11,20 @@ export interface Organization {
   whatsapp_api_key: string | null
   whatsapp_instance_name: string | null
   whatsapp_connected: boolean
+  lunch_break_start: string | null
+  lunch_break_end: string | null
   created_at: string
   updated_at: string
 }
 
 export type PublicOrganization = Pick<
   Organization,
-  'id' | 'name' | 'logo_url' | 'coupon_discount_percent'
+  | 'id'
+  | 'name'
+  | 'logo_url'
+  | 'coupon_discount_percent'
+  | 'lunch_break_start'
+  | 'lunch_break_end'
 >
 
 export interface WhatsAppRule {

@@ -231,6 +231,13 @@ export default function AppointmentsPage() {
       return
     }
 
+    const lunchStart = profile.organizations?.lunch_break_start?.slice(0, 5)
+    const lunchEnd = profile.organizations?.lunch_break_end?.slice(0, 5)
+    if (lunchStart && lunchEnd && newApptTime >= lunchStart && newApptTime < lunchEnd) {
+      setNewApptError(`Ese horario está bloqueado por ser la hora de almuerzo (${lunchStart} - ${lunchEnd}).`)
+      return
+    }
+
     setNewApptSubmitting(true)
     setNewApptError(null)
 

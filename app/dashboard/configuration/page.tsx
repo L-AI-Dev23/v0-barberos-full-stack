@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Building, Upload, Check, Image as ImageIcon } from 'lucide-react'
+import { Building, Upload, Check, Image as ImageIcon, Coffee } from 'lucide-react'
 
 export default function ConfigurationPage() {
   const { profile, refreshProfile } = useAuth()
@@ -19,10 +19,21 @@ export default function ConfigurationPage() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
 
+  const [lunchEnabled, setLunchEnabled] = useState(false)
+  const [lunchStart, setLunchStart] = useState('13:00')
+  const [lunchEnd, setLunchEnd] = useState('14:00')
+  const [lunchError, setLunchError] = useState<string | null>(null)
+
   useEffect(() => {
     if (profile?.organizations) {
       setBusinessName(profile.organizations.name || '')
       setLogoUrl(profile.organizations.logo_url || null)
+
+      const start = profile.organizations.lunch_break_start
+      const end = profile.organizations.lunch_break_end
+      setLunchEnabled(Boolean(start && end))
+      if (start) setLunchStart(start.slice(0, 5))
+      if (end) setLunchEnd(end.slice(0, 5))
     }
   }, [profile])
 
@@ -56,6 +67,14 @@ export default function ConfigurationPage() {
 
   async function handleSave() {
     if (!profile?.organization_id) return
+
+    setLunchError(null)
+
+    if (lunchEnabled && lunchStart >= lunchEnd) {
+      setLunchError('La hora de inicio debe ser anterior a la hora de fin.')
+      return
+    }
+
     setSaving(true)
 
     const { error } = await supabase
@@ -63,6 +82,8 @@ export default function ConfigurationPage() {
       .update({
         name: businessName.trim(),
         logo_url: logoUrl,
+        lunch_break_start: lunchEnabled ? lunchStart : null,
+        lunch_break_end: lunchEnabled ? lunchEnd : null,
       })
       .eq('id', profile.organization_id)
 
@@ -143,8 +164,62 @@ export default function ConfigurationPage() {
               placeholder="Nombre de tu barbería"
             />
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Save Button */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Coffee className="h-5 w-5" />
+            Hora de almuerzo
+          </CardTitle>
+          <CardDescription>
+            Bloquea un horario en el que no se podrán reservar citas, sin importar el barbero
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div>
+              <p className="text-sm font-medium">Activar hora de almuerzo</p>
+              <p className="text-xs text-muted-foreground">
+                Ningún cliente podrá agendar citas dentro de este rango horario
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={lunchEnabled}
+              onChange={(e) => setLunchEnabled(e.target.checked)}
+              className="h-5 w-5 accent-primary"
+            />
+          </div>
+
+          {lunchEnabled && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="lunchStart">Hora de inicio</Label>
+                <Input
+                  id="lunchStart"
+                  type="time"
+                  value={lunchStart}
+                  onChange={(e) => setLunchStart(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lunchEnd">Hora de fin</Label>
+                <Input
+                  id="lunchEnd"
+                  type="time"
+                  value={lunchEnd}
+                  onChange={(e) => setLunchEnd(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {lunchError && (
+            <p className="text-sm text-destructive">{lunchError}</p>
+          )}
+
           <Button
             onClick={handleSave}
             disabled={saving || !businessName.trim()}

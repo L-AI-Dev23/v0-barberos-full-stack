@@ -116,6 +116,18 @@ function getAvailableRange(
   return { start: daySchedule.start, end: daySchedule.end }
 }
 
+// Devuelve true si el horario "HH:mm" cae dentro del rango de almuerzo
+// (inicio inclusive, fin exclusivo).
+function isWithinLunchBreak(
+  time: string,
+  lunchStart: string | null | undefined,
+  lunchEnd: string | null | undefined,
+): boolean {
+  if (!lunchStart || !lunchEnd) return false
+  const t = time.slice(0, 5)
+  return t >= lunchStart.slice(0, 5) && t < lunchEnd.slice(0, 5)
+}
+
 export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = use(params)
   const supabase = createClient()
@@ -148,7 +160,7 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
     async function loadOrg() {
       const { data } = await supabase
         .from('organizations_public')
-        .select('id, name, logo_url, coupon_discount_percent')
+        .select('id, name, logo_url, coupon_discount_percent, lunch_break_start, lunch_break_end')
         .eq('id', orgId)
         .single()
 
@@ -343,6 +355,11 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
   async function bookAppointment() {
     if (!selectedService || !selectedDate || !selectedTime || !client) {
       setError('Por favor completa todos los campos')
+      return
+    }
+
+    if (isWithinLunchBreak(selectedTime, organization?.lunch_break_start, organization?.lunch_break_end)) {
+      setError('Ese horario está bloqueado por ser la hora de almuerzo. Elige otro horario.')
       return
     }
 
@@ -870,13 +887,19 @@ export default function LoyaltyClientPage({ params }: { params: Promise<{ orgId:
                                   return (
                                     <div className="mt-2 grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
                                       {slots.map((time) => {
-                                        const isBooked = bookedTimes.includes(time)
+                                        const isLunch = isWithinLunchBreak(
+                                          time,
+                                          organization?.lunch_break_start,
+                                          organization?.lunch_break_end,
+                                        )
+                                        const isBooked = bookedTimes.includes(time) || isLunch
                                         const isSelected = selectedTime === time
                                         return (
                                           <button
                                             key={time}
                                             type="button"
                                             disabled={isBooked}
+                                            title={isLunch ? 'Hora de almuerzo' : undefined}
                                             onClick={() => setSelectedTime(time)}
                                             className={`text-xs rounded-md border py-2 transition-colors ${isBooked
                                                 ? 'opacity-40 line-through cursor-not-allowed bg-muted'
